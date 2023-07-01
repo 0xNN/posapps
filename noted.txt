@@ -1,0 +1,18 @@
+===============
+MOBILE POS
+===============
++ Aplikasi dibuat Online via API aja biar tau stok & no transaksi berurut, tapi diinsert ke dalam table tersendiri yg beda dg db web MEDEQ
++ Input Customer: Nama Alamat No Telp
+  ada fitur tambah Customer, yg diinput Nama, Alamat, dan No. Telp
++ Item Produk terlalu besar
+- input produk ada inputan Diskon (persen dan nominal)
+- perhitungan Diskon ada pembulatan
+- di Total Pembayaran tambahkan
+  -- Sub Total, total qty item * (harga satuan - diskon)
+  -- Diskon, input nominal
+  -- PPN didapat 11% dari (SubTotal - Diskon)
+  -- Grand Total, SubTotal-Diskon+PPN
+- PDF ada tulisan Lunas ato belum, utk PDF akan dibuatkan API yg di-akses Apps
++ Di Pembayaran ada dropdown metode pembayaran (data rek bank ditarik juga)
++ Di Pembayaran (setelah klik BAYAR) Ada tombol Lunas ato belum (jika belum baru input nominal)
+- Rekap harian (jual brapa bayar brapa piutang brapa) tampilkan List dari API
