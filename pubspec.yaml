@@ -44,6 +44,7 @@ dependencies:
   namefully: ^0.1.8+1
   intl: ^0.18.1
   get: ^4.6.5
+  timer_count_down: ^2.2.2
 
 dev_dependencies:
   flutter_test:

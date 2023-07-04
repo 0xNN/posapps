@@ -8,6 +8,9 @@ class Controller extends GetxController {
   var activePage = 'penjualan'.obs;
   var salesman = ''.obs;
   var pelanggan = ''.obs;
+  var statusBayar = ''.obs;
+  var salesmanId = ''.obs;
+  bool isReload = false;
 
   increment() => count++;
 
@@ -33,6 +36,21 @@ class Controller extends GetxController {
 
   setPelanggan(pelanggan) {
     this.pelanggan.value = pelanggan;
+    update();
+  }
+
+  setStatusBayar(statusBayar) {
+    this.statusBayar.value = statusBayar;
+    update();
+  }
+
+  setSalesmanId(salesmanId) {
+    this.salesmanId.value = salesmanId;
+    update();
+  }
+
+  setReload(bool isReload) {
+    this.isReload = isReload;
     update();
   }
 }

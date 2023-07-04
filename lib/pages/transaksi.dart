@@ -21,7 +21,8 @@ class CurrencyFormat {
 
 class TransaksiPage extends StatefulWidget {
   final Function refresh;
-  const TransaksiPage({Key key, this.refresh}) : super(key: key);
+  final bool isUpdate;
+  const TransaksiPage({Key key, this.refresh, this.isUpdate}) : super(key: key);
   static const String routeName = '/transaksi';
 
   @override
@@ -30,10 +31,12 @@ class TransaksiPage extends StatefulWidget {
 
 class _TransaksiPageState extends State<TransaksiPage> {
   final c = Get.put(Controller());
-  List<InvoiceData> invoiceData = [];
-  List<InvoiceData> invoiceDataFiltered = [];
+  List<ListInvoice> invoiceData = [];
+  List<ListInvoice> invoiceDataFiltered = [];
 
-  InvoiceData invoiceDataSelected;
+  DataSummary summary;
+
+  ListInvoice invoiceDataSelected;
   Set<DetailInvoice> detailInvoice = <DetailInvoice>{};
 
   Future<InvoiceRes> futureInvoice() async {
@@ -43,7 +46,10 @@ class _TransaksiPageState extends State<TransaksiPage> {
       "InvoiceId": "",
       "Status": "",
       "StatusLunas": "",
+      "StatusBayar": c.statusBayar.value.toString(),
+      "SalesmanId": c.salesmanId.value.toString(),
     };
+    print(body.toString());
     url = url + '?' + Uri(queryParameters: body).query;
     final response = await http.get(
       Uri.parse(url),
@@ -59,11 +65,13 @@ class _TransaksiPageState extends State<TransaksiPage> {
 
   @override
   void initState() {
+    print("INIT TRANSAKSI");
     futureInvoice().then((value) {
       if (value.success) {
         setState(() {
-          invoiceData = value.data;
-          invoiceDataFiltered = value.data;
+          invoiceData = value.data.listInvoice;
+          invoiceDataFiltered = value.data.listInvoice;
+          summary = value.data.summary;
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,7 +80,10 @@ class _TransaksiPageState extends State<TransaksiPage> {
           ),
         );
       }
-    }).catchError((onError) {
+    }).onError((onError, stackTrace) {
+      print("ERRRORRRRRR");
+      print(onError.toString());
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(onError.toString()),
@@ -84,10 +95,13 @@ class _TransaksiPageState extends State<TransaksiPage> {
 
   @override
   void didUpdateWidget(TransaksiPage oldWidget) {
+    print("UPDATE TRANSAKSI");
     futureInvoice().then((value) {
       if (value.success) {
         setState(() {
-          invoiceData = value.data;
+          invoiceData = value.data.listInvoice;
+          invoiceDataFiltered = value.data.listInvoice;
+          summary = value.data.summary;
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -113,169 +127,148 @@ class _TransaksiPageState extends State<TransaksiPage> {
       decoration: BoxDecoration(
         color: Colors.grey[100],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            flex: 1,
+          SizedBox(
+            height: 50,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  right: BorderSide(
-                    color: Colors.grey[300],
-                    width: 1,
-                  ),
-                ),
+                color: Colors.transparent,
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  // Search
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Cari Pelanggan',
-                      prefixIcon: Icon(Icons.search),
-                      border: UnderlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.grey[100],
-                          width: 1,
+                  // Total Tagihan
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          right: BorderSide(
+                            color: Colors.grey[300],
+                            width: 1,
+                          ),
+                          bottom: BorderSide(
+                            color: Colors.grey[300],
+                            width: 1,
+                          ),
                         ),
                       ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        if (value.isEmpty) {
-                          invoiceDataFiltered = invoiceData;
-                        } else {
-                          invoiceDataFiltered = invoiceData
-                              .where((element) => element.pelanggan
-                                  .toLowerCase()
-                                  .contains(value.toLowerCase()))
-                              .toList();
-                        }
-                      });
-                    },
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: invoiceDataFiltered.length,
-                      itemBuilder: (context, index) {
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              invoiceDataSelected = invoiceDataFiltered[index];
-                              detailInvoice.clear();
-                              for (DetailInvoice element
-                                  in invoiceDataFiltered[index].detailInvoice) {
-                                // check unique
-                                if (detailInvoice
-                                    .where((e) =>
-                                        e.rowUniqueId == element.rowUniqueId)
-                                    .isEmpty) {
-                                  detailInvoice.add(element);
-                                }
-                              }
-                              print(detailInvoice.length);
-                            });
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Colors.grey[300],
-                                  width: 1,
-                                ),
-                              ),
-                              color: Colors.white,
-                            ),
-                            child: ListTile(
-                              title: Text(invoiceDataFiltered[index].pelanggan),
-                              enabled: invoiceDataSelected != null
-                                  ? invoiceDataFiltered[index].id ==
-                                      invoiceDataSelected.id
-                                  : false,
-                              subtitle: Row(
-                                children: [
-                                  Text(invoiceDataFiltered[index]
-                                      .tglDokumenFormat),
-                                  SizedBox(
-                                    width: 5,
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(5),
-                                      color: invoiceDataFiltered[index]
-                                                  .status ==
-                                              'DRAFT'
-                                          ? Colors.pink[100].withOpacity(.5)
-                                          : Colors.indigo[100].withOpacity(.5),
-                                    ),
-                                    child: Text(
-                                      invoiceDataFiltered[index].status,
-                                      style: TextStyle(
-                                        color:
-                                            invoiceDataFiltered[index].status ==
-                                                    'DRAFT'
-                                                ? Colors.pink
-                                                : Colors.indigo,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  )
-                                ],
-                              ),
-                              trailing: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    CurrencyFormat.convertToIdr(
-                                      invoiceDataFiltered[index].grandTotal,
-                                      0,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 3,
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(5),
-                                      color: invoiceDataFiltered[index]
-                                                  .statusLunas ==
-                                              '0'
-                                          ? Colors.orange[100].withOpacity(.5)
-                                          : Colors.green[100].withOpacity(.5),
-                                    ),
-                                    child: Text(
-                                      invoiceDataFiltered[index].statusLunas ==
-                                              '0'
-                                          ? 'Belum Lunas'
-                                          : 'Lunas',
-                                      style: TextStyle(
-                                        color: invoiceDataFiltered[index]
-                                                    .statusLunas ==
-                                                '0'
-                                            ? Colors.orange
-                                            : Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Total Tagihan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
                             ),
                           ),
-                        );
-                      },
+                          Text(
+                            invoiceDataFiltered.isEmpty
+                                ? "-"
+                                : CurrencyFormat.convertToIdr(
+                                    int.parse(summary.totalTagihan),
+                                    0,
+                                  ),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Total Bayar
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          right: BorderSide(
+                            color: Colors.grey[300],
+                            width: 1,
+                          ),
+                          bottom: BorderSide(
+                            color: Colors.grey[300],
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Total Bayar',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            invoiceDataFiltered.isEmpty
+                                ? "-"
+                                : CurrencyFormat.convertToIdr(
+                                    int.parse(summary.totalBayar),
+                                    0,
+                                  ),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Sisa Tagihan
+                  Expanded(
+                    flex: 1,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          right: BorderSide(
+                            color: Colors.grey[300],
+                            width: 1,
+                          ),
+                          bottom: BorderSide(
+                            color: Colors.grey[300],
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Sisa Tagihan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          Text(
+                            invoiceDataFiltered.isEmpty
+                                ? "-"
+                                : CurrencyFormat.convertToIdr(
+                                    int.parse(summary.sisaTagihan),
+                                    0,
+                                  ),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -283,328 +276,546 @@ class _TransaksiPageState extends State<TransaksiPage> {
             ),
           ),
           Expanded(
-            flex: 2,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: MediaQuery.of(context).size.height,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(
-                          color: Colors.grey[200],
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        right: BorderSide(
+                          color: Colors.grey[300],
                           width: 1,
                         ),
+                        // top: BorderSide(
+                        //   color: Colors.grey[300],
+                        //   width: 1,
+                        // ),
                       ),
-                      margin: EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 10,
-                      ),
-                      padding: EdgeInsets.only(
-                        top: 10,
-                        left: 10,
-                        right: 10,
-                      ),
-                      child: invoiceDataSelected != null
-                          ? SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        invoiceDataSelected.tglDokumenFormat,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.normal,
-                                          fontSize: 12,
-                                          color: Colors.grey,
-                                        ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Search
+                        TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Cari Pelanggan',
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.grey[400],
+                            ),
+                            prefixIconConstraints: BoxConstraints(
+                              minWidth: 30,
+                              minHeight: 20,
+                            ),
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            border: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.grey[100],
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          onChanged: (value) {
+                            setState(() {
+                              if (value.isEmpty) {
+                                invoiceDataFiltered = invoiceData;
+                              } else {
+                                invoiceDataFiltered = invoiceData
+                                    .where((element) => element.pelanggan
+                                        .toLowerCase()
+                                        .contains(value.toLowerCase()))
+                                    .toList();
+                              }
+                            });
+                          },
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: invoiceDataFiltered.length,
+                            itemBuilder: (context, index) {
+                              return InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    invoiceDataSelected =
+                                        invoiceDataFiltered[index];
+                                    detailInvoice.clear();
+                                    for (DetailInvoice element
+                                        in invoiceDataFiltered[index]
+                                            .detailInvoice) {
+                                      // check unique
+                                      if (detailInvoice
+                                          .where((e) =>
+                                              e.rowUniqueId ==
+                                              element.rowUniqueId)
+                                          .isEmpty) {
+                                        detailInvoice.add(element);
+                                      }
+                                    }
+                                    print(detailInvoice.length);
+                                  });
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: Colors.grey[300],
+                                        width: 1,
                                       ),
-                                      SizedBox(
-                                        width: 3,
-                                      ),
-                                      Icon(
-                                        Icons.access_time_outlined,
-                                        color: Colors.grey,
-                                        size: 12,
-                                      ),
-                                    ],
+                                    ),
+                                    color: Colors.white,
                                   ),
-                                  SizedBox(
-                                    height: 3,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 5,
-                                          vertical: 2,
+                                  child: ListTile(
+                                    title: Text(
+                                        invoiceDataFiltered[index].pelanggan),
+                                    enabled: invoiceDataSelected != null
+                                        ? invoiceDataFiltered[index].id ==
+                                            invoiceDataSelected.id
+                                        : false,
+                                    subtitle: Row(
+                                      children: [
+                                        Text(invoiceDataFiltered[index]
+                                            .tglDokumenFormat),
+                                        SizedBox(
+                                          width: 5,
                                         ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                          color: invoiceDataSelected.status ==
-                                                  'DRAFT'
-                                              ? Colors.pink[100].withOpacity(.5)
-                                              : Colors.indigo[100]
-                                                  .withOpacity(.5),
-                                        ),
-                                        child: Text(
-                                          invoiceDataSelected.status,
-                                          style: TextStyle(
-                                            color: invoiceDataSelected.status ==
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            color: invoiceDataFiltered[index]
+                                                        .status ==
                                                     'DRAFT'
-                                                ? Colors.pink
-                                                : Colors.indigo,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
+                                                ? Colors.pink[100]
+                                                    .withOpacity(.5)
+                                                : Colors.indigo[100]
+                                                    .withOpacity(.5),
+                                          ),
+                                          child: Text(
+                                            invoiceDataFiltered[index].status,
+                                            style: TextStyle(
+                                              color: invoiceDataFiltered[index]
+                                                          .status ==
+                                                      'DRAFT'
+                                                  ? Colors.pink
+                                                  : Colors.indigo,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        )
+                                      ],
+                                    ),
+                                    trailing: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          CurrencyFormat.convertToIdr(
+                                            int.parse(invoiceDataFiltered[index]
+                                                .grandTotal),
+                                            0,
                                           ),
                                         ),
-                                      ),
-                                      SizedBox(
-                                        width: 3,
-                                      ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 5,
-                                          vertical: 2,
+                                        SizedBox(
+                                          height: 3,
                                         ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                          color:
-                                              invoiceDataSelected.statusLunas ==
-                                                      '0'
-                                                  ? Colors.orange[100]
-                                                      .withOpacity(.5)
-                                                  : Colors.green[100]
-                                                      .withOpacity(.5),
-                                        ),
-                                        child: Text(
-                                          invoiceDataSelected.statusLunas == '0'
-                                              ? 'BELUM LUNAS'
-                                              : 'LUNAS',
-                                          style: TextStyle(
-                                            color: invoiceDataSelected
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            color: invoiceDataFiltered[index]
                                                         .statusLunas ==
                                                     '0'
-                                                ? Colors.orange
-                                                : Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
+                                                ? Colors.orange[100]
+                                                    .withOpacity(.5)
+                                                : Colors.green[100]
+                                                    .withOpacity(.5),
+                                          ),
+                                          child: Text(
+                                            invoiceDataFiltered[index]
+                                                        .statusLunas ==
+                                                    '0'
+                                                ? 'Belum Lunas'
+                                                : 'Lunas',
+                                            style: TextStyle(
+                                              color: invoiceDataFiltered[index]
+                                                          .statusLunas ==
+                                                      '0'
+                                                  ? Colors.orange
+                                                  : Colors.green,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: MediaQuery.of(context).size.height,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: Colors.grey[200],
+                                width: 1,
+                              ),
+                            ),
+                            margin: EdgeInsets.symmetric(
+                              vertical: 5,
+                              horizontal: 5,
+                            ),
+                            padding: EdgeInsets.only(
+                              top: 10,
+                              left: 10,
+                              right: 10,
+                            ),
+                            child: invoiceDataSelected != null
+                                ? SingleChildScrollView(
+                                    scrollDirection: Axis.vertical,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              invoiceDataSelected
+                                                  .tglDokumenFormat,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.normal,
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 3,
+                                            ),
+                                            Icon(
+                                              Icons.access_time_outlined,
+                                              color: Colors.grey,
+                                              size: 12,
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(
+                                          height: 3,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 5,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                color: invoiceDataSelected
+                                                            .status ==
+                                                        'DRAFT'
+                                                    ? Colors.pink[100]
+                                                        .withOpacity(.5)
+                                                    : Colors.indigo[100]
+                                                        .withOpacity(.5),
+                                              ),
+                                              child: Text(
+                                                invoiceDataSelected.status,
+                                                style: TextStyle(
+                                                  color: invoiceDataSelected
+                                                              .status ==
+                                                          'DRAFT'
+                                                      ? Colors.pink
+                                                      : Colors.indigo,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 3,
+                                            ),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 5,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                color: invoiceDataSelected
+                                                            .statusLunas ==
+                                                        '0'
+                                                    ? Colors.orange[100]
+                                                        .withOpacity(.5)
+                                                    : Colors.green[100]
+                                                        .withOpacity(.5),
+                                              ),
+                                              child: Text(
+                                                invoiceDataSelected
+                                                            .statusLunas ==
+                                                        '0'
+                                                    ? 'BELUM LUNAS'
+                                                    : 'LUNAS',
+                                                style: TextStyle(
+                                                  color: invoiceDataSelected
+                                                              .statusLunas ==
+                                                          '0'
+                                                      ? Colors.orange
+                                                      : Colors.green,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: 3,
+                                            ),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 5,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                color: Colors.blue[100]
+                                                    .withOpacity(.5),
+                                              ),
+                                              child: Text(
+                                                invoiceDataSelected
+                                                        .metodeBayar ??
+                                                    '-',
+                                                style: TextStyle(
+                                                  color: Colors.blue,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(
+                                          height: 3,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              invoiceDataSelected.pelanggan,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(
+                                          height: 3,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              CurrencyFormat.convertToIdr(
+                                                int.parse(invoiceDataSelected
+                                                    .grandTotal),
+                                                0,
+                                              ),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        // Divider(),
+                                        // if Draft add Button Edit
+                                        if (invoiceDataSelected.status ==
+                                            'DRAFT')
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              c.edit(invoiceDataSelected.id);
+                                              print(c.isEdit);
+                                              print(c.invoiceId);
+                                              c.setActivePage("penjualan");
+                                              widget.refresh();
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              primary: Colors.indigo,
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                            ),
+                                            child: Text('Edit'),
+                                          )
+                                      ],
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(
+                                        Icons.info,
+                                        color: Colors.orange,
                                       ),
                                       SizedBox(
-                                        width: 3,
+                                        width: 5,
                                       ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 5,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                          color:
-                                              Colors.blue[100].withOpacity(.5),
-                                        ),
-                                        child: Text(
-                                          invoiceDataSelected.metodeBayar,
-                                          style: TextStyle(
-                                            color: Colors.blue,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
+                                      Text('Pilih Invoice'),
                                     ],
                                   ),
-                                  SizedBox(
-                                    height: 3,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        invoiceDataSelected.pelanggan,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(
-                                    height: 3,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        CurrencyFormat.convertToIdr(
-                                          invoiceDataSelected.grandTotal,
-                                          0,
-                                        ),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: Colors.orange,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  // Divider(),
-                                  // if Draft add Button Edit
-                                  if (invoiceDataSelected.status == 'DRAFT')
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        c.edit(invoiceDataSelected.id);
-                                        print(c.isEdit);
-                                        print(c.invoiceId);
-                                        c.setActivePage("penjualan");
-                                        widget.refresh();
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        primary: Colors.indigo,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                        ),
-                                      ),
-                                      child: Text('Edit'),
-                                    )
-                                ],
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(
-                                  Icons.info,
-                                  color: Colors.orange,
-                                ),
-                                SizedBox(
-                                  width: 5,
-                                ),
-                                Text('Pilih Invoice'),
-                              ],
-                            ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(
-                          color: Colors.grey[200],
-                          width: 1,
+                          ),
                         ),
-                      ),
-                      margin: EdgeInsets.only(
-                        bottom: 10,
-                        left: 10,
-                        right: 10,
-                      ),
-                      padding: EdgeInsets.all(10),
-                      child: invoiceDataSelected != null
-                          ? Column(
-                              children: [
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: detailInvoice.length,
-                                    itemBuilder: (context, index) {
-                                      int length = invoiceDataSelected
-                                          .detailInvoice
-                                          .where((element) =>
-                                              element.rowUniqueId ==
-                                              detailInvoice
-                                                  .elementAt(index)
-                                                  .rowUniqueId)
-                                          .length;
-                                      print("LENGTH");
-                                      print(length);
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          border: Border(
-                                            bottom: BorderSide(
-                                              color: Colors.blue[200],
-                                              width: 1,
-                                            ),
-                                          ),
-                                        ),
-                                        child: ListTile(
-                                          dense: true,
-                                          title: Text(
-                                            detailInvoice
-                                                .elementAt(index)
-                                                .produkId,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            length.toString() +
-                                                ' x ' +
-                                                CurrencyFormat.convertToIdr(
-                                                  int.parse(detailInvoice
-                                                      .elementAt(index)
-                                                      .harga),
-                                                  0,
-                                                ),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          trailing: Text(
-                                            CurrencyFormat.convertToIdr(
-                                              int.parse(detailInvoice
-                                                      .elementAt(index)
-                                                      .harga) *
-                                                  length,
-                                              0,
-                                            ),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.orange,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(
-                                  Icons.info,
-                                  color: Colors.orange,
-                                ),
-                                SizedBox(
-                                  width: 5,
-                                ),
-                                Text('Pilih Invoice'),
-                              ],
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(
+                                color: Colors.grey[200],
+                                width: 1,
+                              ),
                             ),
+                            margin: EdgeInsets.only(
+                              bottom: 5,
+                              left: 5,
+                              right: 5,
+                            ),
+                            padding: EdgeInsets.all(10),
+                            child: invoiceDataSelected != null
+                                ? Column(
+                                    children: [
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: detailInvoice.length,
+                                          itemBuilder: (context, index) {
+                                            int length = invoiceDataSelected
+                                                .detailInvoice
+                                                .where((element) =>
+                                                    element.rowUniqueId ==
+                                                    detailInvoice
+                                                        .elementAt(index)
+                                                        .rowUniqueId)
+                                                .length;
+                                            print("LENGTH");
+                                            print(length);
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                    color: Colors.blue[200],
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: ListTile(
+                                                dense: true,
+                                                title: Text(
+                                                  detailInvoice
+                                                      .elementAt(index)
+                                                      .produkId,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                subtitle: Text(
+                                                  length.toString() +
+                                                      ' x ' +
+                                                      CurrencyFormat
+                                                          .convertToIdr(
+                                                        int.parse(detailInvoice
+                                                            .elementAt(index)
+                                                            .harga),
+                                                        0,
+                                                      ),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                trailing: Text(
+                                                  CurrencyFormat.convertToIdr(
+                                                    int.parse(detailInvoice
+                                                            .elementAt(index)
+                                                            .harga) *
+                                                        length,
+                                                    0,
+                                                  ),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.orange,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(
+                                        Icons.info,
+                                        color: Colors.orange,
+                                      ),
+                                      SizedBox(
+                                        width: 5,
+                                      ),
+                                      Text('Pilih Invoice'),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

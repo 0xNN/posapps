@@ -7,7 +7,7 @@ import 'dart:convert';
 class InvoiceRes {
   bool success;
   String message;
-  List<InvoiceData> data;
+  InvoiceData data;
 
   InvoiceRes({
     this.success,
@@ -23,27 +23,57 @@ class InvoiceRes {
   factory InvoiceRes.fromMap(Map<String, dynamic> json) => InvoiceRes(
         success: json["success"],
         message: json["message"],
-        data: json["data"] == null
-            ? []
-            : List<InvoiceData>.from(
-                json["data"].map((x) => InvoiceData.fromMap(x))),
+        data: json["data"] == null ? null : InvoiceData.fromMap(json["data"]),
       );
 
   Map<String, dynamic> toMap() => {
         "success": success,
         "message": message,
-        "data":
-            data == null ? [] : List<dynamic>.from(data.map((x) => x.toMap())),
+        "data": data.toMap(),
       };
 }
 
 class InvoiceData {
+  DataSummary summary;
+  List<ListInvoice> listInvoice;
+
+  InvoiceData({
+    this.summary,
+    this.listInvoice,
+  });
+
+  factory InvoiceData.fromJson(String str) =>
+      InvoiceData.fromMap(json.decode(str));
+
+  String toJson() => json.encode(toMap());
+
+  factory InvoiceData.fromMap(Map<String, dynamic> json) => InvoiceData(
+        summary: json["summary"] == null
+            ? null
+            : DataSummary.fromMap(json["summary"]),
+        listInvoice: json["list_invoice"] == null
+            ? []
+            : List<ListInvoice>.from(
+                json["list_invoice"].map((x) => ListInvoice.fromMap(x))),
+      );
+
+  Map<String, dynamic> toMap() => {
+        "summary": summary.toMap(),
+        "list_invoice": listInvoice == null
+            ? []
+            : List<dynamic>.from(listInvoice.map((x) => x.toMap())),
+      };
+}
+
+class ListInvoice {
   String id;
   String tglDokumenFormat;
   String salesmanId;
   String pelangganId;
   String rekeningId;
   String diskonNominal;
+  double diskonPersen;
+  String pembulatan;
   String subTotal;
   String ppn;
   String nominalBayar;
@@ -52,16 +82,18 @@ class InvoiceData {
   String salesman;
   String pelanggan;
   String metodeBayar;
-  int grandTotal;
+  String grandTotal;
   List<DetailInvoice> detailInvoice;
 
-  InvoiceData({
+  ListInvoice({
     this.id,
     this.tglDokumenFormat,
     this.salesmanId,
     this.pelangganId,
     this.rekeningId,
     this.diskonNominal,
+    this.diskonPersen,
+    this.pembulatan,
     this.subTotal,
     this.ppn,
     this.nominalBayar,
@@ -74,27 +106,29 @@ class InvoiceData {
     this.detailInvoice,
   });
 
-  factory InvoiceData.fromJson(String str) =>
-      InvoiceData.fromMap(json.decode(str));
+  factory ListInvoice.fromJson(String str) =>
+      ListInvoice.fromMap(json.decode(str));
 
   String toJson() => json.encode(toMap());
 
-  factory InvoiceData.fromMap(Map<String, dynamic> json) => InvoiceData(
+  factory ListInvoice.fromMap(Map<String, dynamic> json) => ListInvoice(
         id: json["Id"],
-        tglDokumenFormat: json["TglDokumenFormat"],
-        salesmanId: json["SalesmanId"],
-        pelangganId: json["PelangganId"],
-        rekeningId: json["RekeningId"],
-        diskonNominal: json["DiskonNominal"],
-        subTotal: json["SubTotal"],
-        ppn: json["PPN"],
-        nominalBayar: json["NominalBayar"],
-        status: json["Status"],
+        tglDokumenFormat: json["TglDokumenFormat"].toString(),
+        salesmanId: json["SalesmanId"].toString(),
+        pelangganId: json["PelangganId"].toString(),
+        rekeningId: json["RekeningId"].toString(),
+        diskonNominal: json["DiskonNominal"].toString(),
+        diskonPersen: json["DiskonPersen"].toDouble(),
+        pembulatan: json["Pembulatan"].toString(),
+        subTotal: json["SubTotal"].toString(),
+        ppn: json["PPN"].toString(),
+        nominalBayar: json["NominalBayar"].toString(),
+        status: json["Status"].toString(),
         statusLunas: json["StatusLunas"],
         salesman: json["Salesman"],
-        pelanggan: json["Pelanggan"] == null ? "-" : json["Pelanggan"],
+        pelanggan: json["Pelanggan"],
         metodeBayar: json["MetodeBayar"],
-        grandTotal: json["GrandTotal"],
+        grandTotal: json["GrandTotal"].toString(),
         detailInvoice: json["DetailInvoice"] == null
             ? []
             : List<DetailInvoice>.from(
@@ -108,6 +142,8 @@ class InvoiceData {
         "PelangganId": pelangganId,
         "RekeningId": rekeningId,
         "DiskonNominal": diskonNominal,
+        "DiskonPersen": diskonPersen,
+        "Pembulatan": pembulatan,
         "SubTotal": subTotal,
         "PPN": ppn,
         "NominalBayar": nominalBayar,
@@ -128,7 +164,7 @@ class DetailInvoice {
   String rowUniqueId;
   String produkId;
   String gudangId;
-  int qty;
+  String qty;
   String harga;
   String diskonNominal;
   String noSerial;
@@ -156,7 +192,7 @@ class DetailInvoice {
         rowUniqueId: json["RowUniqueId"],
         produkId: json["ProdukId"],
         gudangId: json["GudangId"],
-        qty: json["Qty"],
+        qty: json["Qty"].toString(),
         harga: json["Harga"],
         diskonNominal: json["DiskonNominal"],
         noSerial: json["NoSerial"],
@@ -172,6 +208,57 @@ class DetailInvoice {
         "Harga": harga,
         "DiskonNominal": diskonNominal,
         "NoSerial": noSerial,
-        "TglKadaluarsa": tglKadaluarsa,
+        "TglKadaluarsa": tglKadaluarsaValues.reverse[tglKadaluarsa],
       };
+}
+
+enum TglKadaluarsa { THE_00000000000000000000 }
+
+final tglKadaluarsaValues = EnumValues(
+    {"0000-00-00 00:00:00.000000": TglKadaluarsa.THE_00000000000000000000});
+
+enum Status { DRAFT, PUBLISHED }
+
+final statusValues =
+    EnumValues({"DRAFT": Status.DRAFT, "PUBLISHED": Status.PUBLISHED});
+
+class DataSummary {
+  String totalTagihan;
+  String totalBayar;
+  String sisaTagihan;
+
+  DataSummary({
+    this.totalTagihan,
+    this.totalBayar,
+    this.sisaTagihan,
+  });
+
+  factory DataSummary.fromJson(String str) =>
+      DataSummary.fromMap(json.decode(str));
+
+  String toJson() => json.encode(toMap());
+
+  factory DataSummary.fromMap(Map<String, dynamic> json) => DataSummary(
+        totalTagihan: json["TotalTagihan"],
+        totalBayar: json["TotalBayar"],
+        sisaTagihan: json["SisaTagihan"].toString(),
+      );
+
+  Map<String, dynamic> toMap() => {
+        "TotalTagihan": totalTagihan,
+        "TotalBayar": totalBayar,
+        "SisaTagihan": sisaTagihan,
+      };
+}
+
+class EnumValues<T> {
+  Map<String, T> map;
+  Map<T, String> reverseMap;
+
+  EnumValues(this.map);
+
+  Map<T, String> get reverse {
+    reverseMap = map.map((k, v) => MapEntry(v, k));
+    return reverseMap;
+  }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:posapps/models/check_stock.dart';
 import 'package:posapps/models/invoice.dart';
 import 'package:posapps/models/invoice_save.dart';
 import 'package:posapps/models/pelanggan.dart';
@@ -17,6 +18,8 @@ import 'package:select_dialog/select_dialog.dart';
 import 'package:http/http.dart' as http;
 import 'package:posapps/resources/string.dart';
 import 'package:posapps/db/db.dart';
+import 'package:timer_count_down/timer_controller.dart';
+import 'package:timer_count_down/timer_count_down.dart';
 
 class CurrencyFormat {
   static String convertToIdr(dynamic number, int decimalDigit) {
@@ -30,10 +33,11 @@ class CurrencyFormat {
 }
 
 class PenjualanPage extends StatefulWidget {
+  final Function reload;
   static const String routeName = '/penjualan';
   final List<ProdukData> produkDatas;
   final bool reset;
-  const PenjualanPage({Key key, this.produkDatas, this.reset})
+  const PenjualanPage({Key key, this.produkDatas, this.reset, this.reload})
       : super(key: key);
 
   @override
@@ -42,6 +46,8 @@ class PenjualanPage extends StatefulWidget {
 
 class _PenjualanPageState extends State<PenjualanPage> {
   final c = Get.put(Controller());
+  final CountdownController _controller =
+      new CountdownController(autoStart: true);
   DBHelper dbHelper = DBHelper();
 
   double total = 0;
@@ -134,6 +140,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
       "DiskonNominal": "0",
       "SubTotal": subTotal.toString(),
       "PPN": "0",
+      "Pembulatan": "0",
       "NominalBayar": "0",
       "RekeningId": "",
       "IsStatusInvoice": "DRAFT",
@@ -158,7 +165,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
   Map<String, SalesmanData> salesmanMap = {};
   List<PelangganData> pelangganData;
   Map<String, PelangganData> pelangganMap = {};
-  InvoiceData invoiceData;
+  ListInvoice invoiceData;
 
   String salesmanSelected = "Pilih Salesman";
   String pelangganSelected = "Pilih Customer";
@@ -166,6 +173,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
   bool isSalesmanLoad = false;
   bool isPelangganLoad = false;
 
+  bool isPause = false;
   Map<String, ProdukData> produkDataMap = {};
 
   Future<void> _navigateAndDisplayResult(BuildContext context) async {
@@ -249,7 +257,9 @@ class _PenjualanPageState extends State<PenjualanPage> {
       _controllers.forEach((key, value) {
         value.text = "";
       });
+      isPause = false;
     });
+    _controller.restart();
   }
 
   Future<InvoiceRes> futureInvoice(String id) async {
@@ -288,6 +298,51 @@ class _PenjualanPageState extends State<PenjualanPage> {
     if (response.statusCode == 200) {
       print(response.body);
       return ProdukRes.fromMap(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load Produk');
+    }
+  }
+
+  Future<CheckStockRes> futureCheckStock() async {
+    String url = '${API_URL}PosApps/CheckStok';
+    print(url);
+    List<Map<String, dynamic>> invoiceDetail = [];
+    for (var element in produkDipilihSet) {
+      invoiceDetail.add({
+        "RowUniqueId": element.rowUniqueId,
+        "ProdukId": element.produkId,
+        "Qty": 0.toString(),
+        "Harga": element.hargaJual,
+        "GudangId": element.gudangId,
+        "DiskonNominal": 0.toString(),
+        "NoSerial": element.noSerial,
+        "TglKadaluarsa": element.expDate,
+      });
+    }
+    for (var i = 0; i < produkDipilihSet.length; i++) {
+      var element = produkDipilihSet.elementAt(i);
+      invoiceDetail[i]["Qty"] = produkDipilih
+          .where((element) =>
+              element.rowUniqueId == produkDipilihSet.elementAt(i).rowUniqueId)
+          .length
+          .toString();
+      invoiceDetail[i]["DiskonNominal"] =
+          _diskonNominal[element.rowUniqueId] == null
+              ? 0.toString()
+              : _diskonNominal[element.rowUniqueId].toString();
+    }
+    Map<String, dynamic> body = {
+      "InvoiceId": c.isEdit ? c.invoiceId : "",
+      "InvoiceDetail": jsonEncode(invoiceDetail),
+    };
+    print(body);
+    final response = await http.post(
+      Uri.parse(url),
+      body: body,
+    );
+    if (response.statusCode == 200) {
+      print(response.body);
+      return CheckStockRes.fromMap(jsonDecode(response.body));
     } else {
       throw Exception('Failed to load Produk');
     }
@@ -349,7 +404,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
         if (c.isEdit) {
           futureInvoice(c.invoiceId).then((value) {
             setState(() {
-              invoiceData = value.data[0];
+              invoiceData = value.data.listInvoice[0];
               salesmanSelected = invoiceData.salesman;
               pelangganSelected = invoiceData.pelanggan;
             });
@@ -459,6 +514,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
         produkDipilih.clear();
         produkDipilihSet.clear();
         total = 0;
+        _subTotalPerItem.clear();
       });
     } else {
       setState(() {
@@ -470,6 +526,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
         produkDipilih.clear();
         produkDipilihSet.clear();
         total = 0;
+        _subTotalPerItem.clear();
       });
     }
     super.didUpdateWidget(oldWidget);
@@ -487,251 +544,313 @@ class _PenjualanPageState extends State<PenjualanPage> {
           Expanded(
             flex: 2,
             child: widget.produkDatas.isNotEmpty
-                ? AlignedGridView.count(
-                    crossAxisCount: 1,
-                    mainAxisSpacing: 0.0,
-                    crossAxisSpacing: 0.0,
-                    itemCount: widget.produkDatas.length,
-                    itemBuilder: (context, index) {
-                      // var name = Namefully(widget.produkDatas[index].produk);
-                      // String initialName = name.initials().join();
-                      return InkWell(
-                        onTap: () {
-                          int stok = int.parse(widget.produkDatas[index].stok);
-                          if (stok > 0) {
-                            // cek apakah produk di list melebihi stok
-                            int count = 0;
-                            for (ProdukData data in produkDipilih) {
-                              if (data.rowUniqueId ==
-                                  widget.produkDatas[index].rowUniqueId) {
-                                count++;
-                              }
-                            }
-                            if (count < stok) {
-                              setState(() {
-                                produkDipilih.add(widget.produkDatas[index]);
-                                produkDipilihSet.add(widget.produkDatas[index]);
-                                total += double.parse(
-                                    widget.produkDatas[index].hargaJual);
-                                for (var e in produkDipilihSet) {
-                                  int produkLength = produkDipilih
-                                      .where((element) =>
-                                          element.produkId == e.produkId &&
-                                          element.rowUniqueId == e.rowUniqueId)
-                                      .toList()
-                                      .length;
-                                  _subTotalPerItem[e.rowUniqueId] =
-                                      produkLength *
-                                          (int.parse(e.hargaJual) -
-                                              _diskonNominal[e.rowUniqueId]);
-                                  print(_subTotalPerItem[e.rowUniqueId]);
-                                }
-                              });
-                            } else {
-                              showDialog(
-                                  context: context,
-                                  builder: (context) {
-                                    return AlertDialog(
-                                      title: Text("Informasi Stok"),
-                                      content: Text(
-                                        "Stok produk tidak boleh lebih dari $stok",
+                ? Column(
+                    children: [
+                      isPause
+                          ? Container()
+                          : SizedBox(
+                              height: 30,
+                              child: Container(
+                                width: MediaQuery.of(context).size.width,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      "Data produk otomatis diperbarui dalam",
+                                      style: TextStyle(
+                                        fontSize: 12,
                                       ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text("OK"),
+                                    ),
+                                    SizedBox(
+                                      width: 2,
+                                    ),
+                                    Countdown(
+                                      controller: _controller,
+                                      seconds: 10,
+                                      build: (_, double time) => Text(
+                                        time.toInt().toString() + " detik",
+                                        style: TextStyle(
+                                          fontSize: 12,
                                         ),
-                                      ],
-                                    );
-                                  });
-                            }
-                            // setState(() {
-                            //   produkDipilih.add(widget.produkDatas[index]);
-                            //   produkDipilihSet.add(widget.produkDatas[index]);
-                            //   total += double.parse(
-                            //       widget.produkDatas[index].hargaJual);
-                            // });
-                          } else {
-                            showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: Text("Informasi Stok"),
-                                    content: Text(
-                                      "Stok produk tidak tersedia",
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                        },
-                                        child: Text("OK"),
                                       ),
-                                    ],
-                                  );
-                                });
-                          }
-                        },
-                        child: Container(
-                          height: 30,
-                          margin: EdgeInsets.all(2.0),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(4.0),
-                            border: Border.all(
-                              color: Colors.blue[200],
-                              width: .5,
-                            ),
-                            // gradient: LinearGradient(
-                            //   begin: Alignment.topLeft,
-                            //   end: Alignment.bottomRight,
-                            //   colors: [
-                            //     Colors.white,
-                            //     Colors.blue[50],
-                            //   ],
-                            // ),
-                            // boxShadow: [
-                            //   BoxShadow(
-                            //     color: Colors.blue.withOpacity(0.2),
-                            //     spreadRadius: 1,
-                            //     blurRadius: 2,
-                            //     offset:
-                            //         Offset(0, 1), // changes position of shadow
-                            //   ),
-                            // ],
-                          ),
-                          child: Stack(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: Container(
-                                      padding: EdgeInsets.only(
-                                        top: 8.0,
-                                        left: 8.0,
-                                        bottom: 8.0,
-                                        right: 14.0,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            "${widget.produkDatas[index].produk}"
-                                                .toUpperCase(),
-                                            textAlign: TextAlign.start,
-                                            style: TextStyle(
-                                              fontSize: 12.0,
-                                              color: Colors.blue,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(width: 4.0),
-                                          Text(
-                                            "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 12.0,
-                                              color: Colors.indigo[400],
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(width: 4.0),
-                                          Text(
-                                            "Stok : ${widget.produkDatas[index].stok}",
-                                            textAlign: TextAlign.center,
-                                            softWrap: true,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12.0,
-                                              color: Colors.indigo[400],
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                      interval: Duration(seconds: 1),
+                                      onFinished: () {
+                                        _controller.restart();
+                                        c.setReload(true);
+                                        widget.reload();
+                                      },
                                     ),
-                                  ),
-                                  // Container(
-                                  //   // height: 20,
-                                  //   width: double.infinity,
-                                  //   decoration: BoxDecoration(
-                                  //     color: Colors.indigo[50],
-                                  //     borderRadius: BorderRadius.only(
-                                  //         // topRight: Radius.circular(4.0),
-                                  //         ),
-                                  //   ),
-                                  //   padding: EdgeInsets.all(4.0),
-                                  //   child: Text(
-                                  //     "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
-                                  //     textAlign: TextAlign.center,
-                                  //     style: TextStyle(
-                                  //       fontSize: 12.0,
-                                  //       color: Colors.indigo[400],
-                                  //       fontWeight: FontWeight.bold,
-                                  //     ),
-                                  //   ),
-                                  // ),
-                                  // Container(
-                                  //   width: double.infinity,
-                                  //   decoration: BoxDecoration(
-                                  //     color: Colors.blue.shade200,
-                                  //     borderRadius: BorderRadius.only(
-                                  //       bottomLeft: Radius.circular(8.0),
-                                  //       bottomRight: Radius.circular(8.0),
-                                  //     ),
-                                  //   ),
-                                  //   padding: EdgeInsets.all(4.0),
-                                  //   child: Column(
-                                  //     crossAxisAlignment:
-                                  //         CrossAxisAlignment.center,
-                                  //     mainAxisAlignment:
-                                  //         MainAxisAlignment.center,
-                                  //     children: [
-                                  //       Text(
-                                  //         "Stok : ${widget.produkDatas[index].stok}",
-                                  //         textAlign: TextAlign.center,
-                                  //         softWrap: true,
-                                  //         overflow: TextOverflow.ellipsis,
-                                  //         style: TextStyle(
-                                  //           fontSize: 12.0,
-                                  //           color: Colors.white,
-                                  //           fontWeight: FontWeight.bold,
-                                  //         ),
-                                  //       ),
-                                  //     ],
-                                  //   ),
-                                  // ),
-                                ],
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  height: 16,
-                                  width: 16,
-                                  decoration: BoxDecoration(
-                                    color: Colors.indigo[400],
-                                    borderRadius: BorderRadius.only(
-                                      topRight: Radius.circular(4.0),
-                                      bottomRight: Radius.circular(4.0),
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 10,
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                      Expanded(
+                        child: AlignedGridView.count(
+                          crossAxisCount: 1,
+                          mainAxisSpacing: 0.0,
+                          crossAxisSpacing: 0.0,
+                          itemCount: widget.produkDatas.length,
+                          itemBuilder: (context, index) {
+                            // var name = Namefully(widget.produkDatas[index].produk);
+                            // String initialName = name.initials().join();
+                            return InkWell(
+                              onTap: () {
+                                _controller.pause();
+                                c.setReload(false);
+                                setState(() {
+                                  isPause = true;
+                                });
+                                int stok =
+                                    int.parse(widget.produkDatas[index].stok);
+                                if (stok > 0) {
+                                  // cek apakah produk di list melebihi stok
+                                  int count = 0;
+                                  for (ProdukData data in produkDipilih) {
+                                    if (data.rowUniqueId ==
+                                        widget.produkDatas[index].rowUniqueId) {
+                                      count++;
+                                    }
+                                  }
+                                  if (count < stok) {
+                                    setState(() {
+                                      produkDipilih
+                                          .add(widget.produkDatas[index]);
+                                      produkDipilihSet
+                                          .add(widget.produkDatas[index]);
+                                      total += double.parse(
+                                          widget.produkDatas[index].hargaJual);
+                                      for (var e in produkDipilihSet) {
+                                        int produkLength = produkDipilih
+                                            .where((element) =>
+                                                element.produkId ==
+                                                    e.produkId &&
+                                                element.rowUniqueId ==
+                                                    e.rowUniqueId)
+                                            .toList()
+                                            .length;
+                                        _subTotalPerItem[e.rowUniqueId] =
+                                            produkLength *
+                                                (int.parse(e.hargaJual) -
+                                                    _diskonNominal[
+                                                        e.rowUniqueId]);
+                                        print(_subTotalPerItem[e.rowUniqueId]);
+                                      }
+                                    });
+                                  } else {
+                                    showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            title: Text("Informasi Stok"),
+                                            content: Text(
+                                              "Stok produk tidak boleh lebih dari $stok",
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                },
+                                                child: Text("OK"),
+                                              ),
+                                            ],
+                                          );
+                                        });
+                                  }
+                                  // setState(() {
+                                  //   produkDipilih.add(widget.produkDatas[index]);
+                                  //   produkDipilihSet.add(widget.produkDatas[index]);
+                                  //   total += double.parse(
+                                  //       widget.produkDatas[index].hargaJual);
+                                  // });
+                                } else {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return AlertDialog(
+                                          title: Text("Informasi Stok"),
+                                          content: Text(
+                                            "Stok produk tidak tersedia",
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text("OK"),
+                                            ),
+                                          ],
+                                        );
+                                      });
+                                }
+                              },
+                              child: Container(
+                                height: 30,
+                                margin: EdgeInsets.all(2.0),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4.0),
+                                  border: Border.all(
+                                    color: Colors.blue[200],
+                                    width: .5,
+                                  ),
+                                  // gradient: LinearGradient(
+                                  //   begin: Alignment.topLeft,
+                                  //   end: Alignment.bottomRight,
+                                  //   colors: [
+                                  //     Colors.white,
+                                  //     Colors.blue[50],
+                                  //   ],
+                                  // ),
+                                  // boxShadow: [
+                                  //   BoxShadow(
+                                  //     color: Colors.blue.withOpacity(0.2),
+                                  //     spreadRadius: 1,
+                                  //     blurRadius: 2,
+                                  //     offset:
+                                  //         Offset(0, 1), // changes position of shadow
+                                  //   ),
+                                  // ],
+                                ),
+                                child: Stack(
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: 2,
+                                          child: Container(
+                                            padding: EdgeInsets.only(
+                                              top: 8.0,
+                                              left: 8.0,
+                                              bottom: 8.0,
+                                              right: 14.0,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  widget
+                                                      .produkDatas[index].produk
+                                                      .toUpperCase(),
+                                                  textAlign: TextAlign.start,
+                                                  style: TextStyle(
+                                                    fontSize: 12.0,
+                                                    color: Colors.blue,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 4.0),
+                                                Text(
+                                                  "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 12.0,
+                                                    color: Colors.indigo[400],
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                SizedBox(width: 4.0),
+                                                Text(
+                                                  "Stok : ${widget.produkDatas[index].stok}",
+                                                  textAlign: TextAlign.center,
+                                                  softWrap: true,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12.0,
+                                                    color: Colors.indigo[400],
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        // Container(
+                                        //   // height: 20,
+                                        //   width: double.infinity,
+                                        //   decoration: BoxDecoration(
+                                        //     color: Colors.indigo[50],
+                                        //     borderRadius: BorderRadius.only(
+                                        //         // topRight: Radius.circular(4.0),
+                                        //         ),
+                                        //   ),
+                                        //   padding: EdgeInsets.all(4.0),
+                                        //   child: Text(
+                                        //     "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
+                                        //     textAlign: TextAlign.center,
+                                        //     style: TextStyle(
+                                        //       fontSize: 12.0,
+                                        //       color: Colors.indigo[400],
+                                        //       fontWeight: FontWeight.bold,
+                                        //     ),
+                                        //   ),
+                                        // ),
+                                        // Container(
+                                        //   width: double.infinity,
+                                        //   decoration: BoxDecoration(
+                                        //     color: Colors.blue.shade200,
+                                        //     borderRadius: BorderRadius.only(
+                                        //       bottomLeft: Radius.circular(8.0),
+                                        //       bottomRight: Radius.circular(8.0),
+                                        //     ),
+                                        //   ),
+                                        //   padding: EdgeInsets.all(4.0),
+                                        //   child: Column(
+                                        //     crossAxisAlignment:
+                                        //         CrossAxisAlignment.center,
+                                        //     mainAxisAlignment:
+                                        //         MainAxisAlignment.center,
+                                        //     children: [
+                                        //       Text(
+                                        //         "Stok : ${widget.produkDatas[index].stok}",
+                                        //         textAlign: TextAlign.center,
+                                        //         softWrap: true,
+                                        //         overflow: TextOverflow.ellipsis,
+                                        //         style: TextStyle(
+                                        //           fontSize: 12.0,
+                                        //           color: Colors.white,
+                                        //           fontWeight: FontWeight.bold,
+                                        //         ),
+                                        //       ),
+                                        //     ],
+                                        //   ),
+                                        // ),
+                                      ],
+                                    ),
+                                    Positioned(
+                                      top: 0,
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        height: 16,
+                                        width: 16,
+                                        decoration: BoxDecoration(
+                                          color: Colors.indigo[400],
+                                          borderRadius: BorderRadius.only(
+                                            topRight: Radius.circular(4.0),
+                                            bottomRight: Radius.circular(4.0),
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.add,
+                                          color: Colors.white,
+                                          size: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ),
+                    ],
                   )
                 : SizedBox(
                     child: Center(
@@ -891,232 +1010,232 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                             ],
                                           ),
                                           // Input Diskon
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                flex: 2,
-                                                child: TextFormField(
-                                                  controller: _controllers[
-                                                      produkDipilihSet
-                                                          .elementAt(index)
-                                                          .rowUniqueId],
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration: InputDecoration(
-                                                    isDense: true,
-                                                    hintText: "Nominal Diskon",
-                                                    hintStyle: TextStyle(
-                                                      fontSize: 12.0,
-                                                      color: Colors.grey[600],
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                    contentPadding:
-                                                        EdgeInsets.symmetric(
-                                                            horizontal: 8.0,
-                                                            vertical: 8.0),
-                                                    border: OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide: BorderSide(
-                                                        color: Colors.grey[300],
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide: BorderSide(
-                                                        color: Colors.grey[300],
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              4.0),
-                                                      borderSide: BorderSide(
-                                                        color: Colors.grey[300],
-                                                        width: 1.0,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  onChanged: (value) {
-                                                    if (value != "") {
-                                                      if (int.parse(value) >
-                                                          int.parse(
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .hargaJual)) {
-                                                        showDialog(
-                                                          context: context,
-                                                          builder: (context) =>
-                                                              AlertDialog(
-                                                            title: Text(
-                                                                "Peringatan"),
-                                                            content: Text(
-                                                                "Diskon tidak boleh lebih besar dari harga jual"),
-                                                            actions: [
-                                                              TextButton(
-                                                                onPressed: () {
-                                                                  Navigator.pop(
-                                                                      context);
-                                                                },
-                                                                child:
-                                                                    Text("OK"),
-                                                              )
-                                                            ],
-                                                          ),
-                                                        );
-                                                        _controllers[produkDipilihSet
-                                                                    .elementAt(
-                                                                        index)
-                                                                    .rowUniqueId]
-                                                                .value =
-                                                            TextEditingValue(
-                                                          text: "",
-                                                        );
-                                                        setState(() {
-                                                          _diskonNominal[
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .rowUniqueId] = 0;
-                                                          _diskonPersen[
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .rowUniqueId] = 0;
-                                                        });
-                                                        FocusManager.instance
-                                                            .primaryFocus
-                                                            .unfocus();
-                                                      } else {
-                                                        setState(() {
-                                                          _diskonNominal[
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .rowUniqueId] = int
-                                                              .parse(value);
-                                                          _diskonPersen[
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .rowUniqueId] = ((int
-                                                                      .parse(
-                                                                          value) /
-                                                                  int.parse(produkDipilihSet
-                                                                      .elementAt(
-                                                                          index)
-                                                                      .hargaJual)) *
-                                                              100);
-                                                        });
-                                                      }
-                                                    } else {
-                                                      setState(() {
-                                                        _diskonNominal[
-                                                            produkDipilihSet
-                                                                .elementAt(
-                                                                    index)
-                                                                .rowUniqueId] = 0;
-                                                        _diskonPersen[
-                                                            produkDipilihSet
-                                                                .elementAt(
-                                                                    index)
-                                                                .rowUniqueId] = 0;
-                                                      });
-                                                      FocusManager
-                                                          .instance.primaryFocus
-                                                          .unfocus();
-                                                    }
-                                                    int produkLength = produkDipilih
-                                                        .where((element) =>
-                                                            element.produkId ==
-                                                                produkDipilihSet
-                                                                    .elementAt(
-                                                                        index)
-                                                                    .produkId &&
-                                                            element.rowUniqueId ==
-                                                                produkDipilihSet
-                                                                    .elementAt(
-                                                                        index)
-                                                                    .rowUniqueId)
-                                                        .toList()
-                                                        .length;
-                                                    _subTotalPerItem[
-                                                        produkDipilihSet
-                                                            .elementAt(index)
-                                                            .rowUniqueId] = produkLength *
-                                                        (int.parse(
-                                                                produkDipilihSet
-                                                                    .elementAt(
-                                                                        index)
-                                                                    .hargaJual) -
-                                                            _diskonNominal[
-                                                                produkDipilihSet
-                                                                    .elementAt(
-                                                                        index)
-                                                                    .rowUniqueId]);
-                                                    Future.delayed(
-                                                        Duration(
-                                                            milliseconds: 100),
-                                                        () {
-                                                      int totalDiskon = 0;
-                                                      _diskonNominal.forEach(
-                                                          (key, value) {
-                                                        print(value);
-                                                        if (value > 0) {
-                                                          totalDiskon += value;
-                                                        }
-                                                      });
-                                                      setState(() {
-                                                        _totalDiskon =
-                                                            totalDiskon;
-                                                      });
-                                                    });
-                                                    print("SUB TOTALSSSS");
-                                                    print(_subTotalPerItem
-                                                        .length);
-                                                  },
-                                                  style: TextStyle(
-                                                    fontSize: 12.0,
-                                                    color: Colors.grey[600],
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(width: 4.0),
-                                              // Persentase
-                                              Expanded(
-                                                flex: 1,
-                                                child: Text(
-                                                  _diskonPersen[produkDipilihSet
-                                                              .elementAt(index)
-                                                              .rowUniqueId] ==
-                                                          null
-                                                      ? "0%"
-                                                      : _diskonPersen[produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .rowUniqueId]
-                                                              .toStringAsFixed(
-                                                                  2) +
-                                                          "%",
-                                                  style: TextStyle(
-                                                    fontSize: 12.0,
-                                                    color: Colors.green[600],
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                          // Row(
+                                          //   children: [
+                                          //     Expanded(
+                                          //       flex: 2,
+                                          //       child: TextFormField(
+                                          //         controller: _controllers[
+                                          //             produkDipilihSet
+                                          //                 .elementAt(index)
+                                          //                 .rowUniqueId],
+                                          //         keyboardType:
+                                          //             TextInputType.number,
+                                          //         decoration: InputDecoration(
+                                          //           isDense: true,
+                                          //           hintText: "Nominal Diskon",
+                                          //           hintStyle: TextStyle(
+                                          //             fontSize: 12.0,
+                                          //             color: Colors.grey[600],
+                                          //             fontWeight:
+                                          //                 FontWeight.w600,
+                                          //           ),
+                                          //           contentPadding:
+                                          //               EdgeInsets.symmetric(
+                                          //                   horizontal: 8.0,
+                                          //                   vertical: 8.0),
+                                          //           border: OutlineInputBorder(
+                                          //             borderRadius:
+                                          //                 BorderRadius.circular(
+                                          //                     4.0),
+                                          //             borderSide: BorderSide(
+                                          //               color: Colors.grey[300],
+                                          //               width: 1.0,
+                                          //             ),
+                                          //           ),
+                                          //           enabledBorder:
+                                          //               OutlineInputBorder(
+                                          //             borderRadius:
+                                          //                 BorderRadius.circular(
+                                          //                     4.0),
+                                          //             borderSide: BorderSide(
+                                          //               color: Colors.grey[300],
+                                          //               width: 1.0,
+                                          //             ),
+                                          //           ),
+                                          //           focusedBorder:
+                                          //               OutlineInputBorder(
+                                          //             borderRadius:
+                                          //                 BorderRadius.circular(
+                                          //                     4.0),
+                                          //             borderSide: BorderSide(
+                                          //               color: Colors.grey[300],
+                                          //               width: 1.0,
+                                          //             ),
+                                          //           ),
+                                          //         ),
+                                          //         onChanged: (value) {
+                                          //           if (value != "") {
+                                          //             if (int.parse(value) >
+                                          //                 int.parse(
+                                          //                     produkDipilihSet
+                                          //                         .elementAt(
+                                          //                             index)
+                                          //                         .hargaJual)) {
+                                          //               showDialog(
+                                          //                 context: context,
+                                          //                 builder: (context) =>
+                                          //                     AlertDialog(
+                                          //                   title: Text(
+                                          //                       "Peringatan"),
+                                          //                   content: Text(
+                                          //                       "Diskon tidak boleh lebih besar dari harga jual"),
+                                          //                   actions: [
+                                          //                     TextButton(
+                                          //                       onPressed: () {
+                                          //                         Navigator.pop(
+                                          //                             context);
+                                          //                       },
+                                          //                       child:
+                                          //                           Text("OK"),
+                                          //                     )
+                                          //                   ],
+                                          //                 ),
+                                          //               );
+                                          //               _controllers[produkDipilihSet
+                                          //                           .elementAt(
+                                          //                               index)
+                                          //                           .rowUniqueId]
+                                          //                       .value =
+                                          //                   TextEditingValue(
+                                          //                 text: "",
+                                          //               );
+                                          //               setState(() {
+                                          //                 _diskonNominal[
+                                          //                     produkDipilihSet
+                                          //                         .elementAt(
+                                          //                             index)
+                                          //                         .rowUniqueId] = 0;
+                                          //                 _diskonPersen[
+                                          //                     produkDipilihSet
+                                          //                         .elementAt(
+                                          //                             index)
+                                          //                         .rowUniqueId] = 0;
+                                          //               });
+                                          //               FocusManager.instance
+                                          //                   .primaryFocus
+                                          //                   .unfocus();
+                                          //             } else {
+                                          //               setState(() {
+                                          //                 _diskonNominal[
+                                          //                     produkDipilihSet
+                                          //                         .elementAt(
+                                          //                             index)
+                                          //                         .rowUniqueId] = int
+                                          //                     .parse(value);
+                                          //                 _diskonPersen[
+                                          //                     produkDipilihSet
+                                          //                         .elementAt(
+                                          //                             index)
+                                          //                         .rowUniqueId] = ((int
+                                          //                             .parse(
+                                          //                                 value) /
+                                          //                         int.parse(produkDipilihSet
+                                          //                             .elementAt(
+                                          //                                 index)
+                                          //                             .hargaJual)) *
+                                          //                     100);
+                                          //               });
+                                          //             }
+                                          //           } else {
+                                          //             setState(() {
+                                          //               _diskonNominal[
+                                          //                   produkDipilihSet
+                                          //                       .elementAt(
+                                          //                           index)
+                                          //                       .rowUniqueId] = 0;
+                                          //               _diskonPersen[
+                                          //                   produkDipilihSet
+                                          //                       .elementAt(
+                                          //                           index)
+                                          //                       .rowUniqueId] = 0;
+                                          //             });
+                                          //             FocusManager
+                                          //                 .instance.primaryFocus
+                                          //                 .unfocus();
+                                          //           }
+                                          //           int produkLength = produkDipilih
+                                          //               .where((element) =>
+                                          //                   element.produkId ==
+                                          //                       produkDipilihSet
+                                          //                           .elementAt(
+                                          //                               index)
+                                          //                           .produkId &&
+                                          //                   element.rowUniqueId ==
+                                          //                       produkDipilihSet
+                                          //                           .elementAt(
+                                          //                               index)
+                                          //                           .rowUniqueId)
+                                          //               .toList()
+                                          //               .length;
+                                          //           _subTotalPerItem[
+                                          //               produkDipilihSet
+                                          //                   .elementAt(index)
+                                          //                   .rowUniqueId] = produkLength *
+                                          //               (int.parse(
+                                          //                       produkDipilihSet
+                                          //                           .elementAt(
+                                          //                               index)
+                                          //                           .hargaJual) -
+                                          //                   _diskonNominal[
+                                          //                       produkDipilihSet
+                                          //                           .elementAt(
+                                          //                               index)
+                                          //                           .rowUniqueId]);
+                                          //           Future.delayed(
+                                          //               Duration(
+                                          //                   milliseconds: 100),
+                                          //               () {
+                                          //             int totalDiskon = 0;
+                                          //             _diskonNominal.forEach(
+                                          //                 (key, value) {
+                                          //               print(value);
+                                          //               if (value > 0) {
+                                          //                 totalDiskon += value;
+                                          //               }
+                                          //             });
+                                          //             setState(() {
+                                          //               _totalDiskon =
+                                          //                   totalDiskon;
+                                          //             });
+                                          //           });
+                                          //           print("SUB TOTALSSSS");
+                                          //           print(_subTotalPerItem
+                                          //               .length);
+                                          //         },
+                                          //         style: TextStyle(
+                                          //           fontSize: 12.0,
+                                          //           color: Colors.grey[600],
+                                          //           fontWeight: FontWeight.w600,
+                                          //         ),
+                                          //       ),
+                                          //     ),
+                                          //     SizedBox(width: 4.0),
+                                          //     // Persentase
+                                          //     Expanded(
+                                          //       flex: 1,
+                                          //       child: Text(
+                                          //         _diskonPersen[produkDipilihSet
+                                          //                     .elementAt(index)
+                                          //                     .rowUniqueId] ==
+                                          //                 null
+                                          //             ? "0%"
+                                          //             : _diskonPersen[produkDipilihSet
+                                          //                         .elementAt(
+                                          //                             index)
+                                          //                         .rowUniqueId]
+                                          //                     .toStringAsFixed(
+                                          //                         2) +
+                                          //                 "%",
+                                          //         style: TextStyle(
+                                          //           fontSize: 12.0,
+                                          //           color: Colors.green[600],
+                                          //           fontWeight: FontWeight.w600,
+                                          //         ),
+                                          //       ),
+                                          //     ),
+                                          //   ],
+                                          // ),
                                         ],
                                       ),
                                       trailing: InkWell(
@@ -1520,82 +1639,138 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                   : () async {
                                                       // _navigateAndDisplayResult(
                                                       //     context);
-                                                      updateState(() {
-                                                        isDraft = true;
-                                                      });
-                                                      await futureInvoiceSave()
-                                                          .then((value) {
-                                                        if (value != null) {
-                                                          if (value.success) {
-                                                            updateState(() {
-                                                              isDraft = false;
-                                                            });
-                                                            ScaffoldMessenger
-                                                                    .of(context)
-                                                                .showSnackBar(
-                                                              SnackBar(
-                                                                content: Text(
-                                                                    value
-                                                                        .message),
-                                                              ),
-                                                            );
-                                                          } else {
-                                                            updateState(() {
-                                                              isDraft = false;
-                                                            });
-                                                            ScaffoldMessenger
-                                                                    .of(context)
-                                                                .showSnackBar(
-                                                              SnackBar(
-                                                                content: Text(
-                                                                    value
-                                                                        .message),
-                                                              ),
-                                                            );
-                                                          }
-                                                        } else {
+                                                      await futureCheckStock()
+                                                          .then((val) async {
+                                                        if (val.success) {
                                                           updateState(() {
-                                                            isDraft = false;
+                                                            isDraft = true;
                                                           });
+                                                          await futureInvoiceSave()
+                                                              .then((value) {
+                                                            if (value != null) {
+                                                              if (value
+                                                                  .success) {
+                                                                updateState(() {
+                                                                  isDraft =
+                                                                      false;
+                                                                });
+                                                                ScaffoldMessenger.of(
+                                                                        context)
+                                                                    .showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text(
+                                                                        value
+                                                                            .message),
+                                                                  ),
+                                                                );
+                                                              } else {
+                                                                updateState(() {
+                                                                  isDraft =
+                                                                      false;
+                                                                });
+                                                                ScaffoldMessenger.of(
+                                                                        context)
+                                                                    .showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text(
+                                                                        value
+                                                                            .message),
+                                                                  ),
+                                                                );
+                                                              }
+                                                            } else {
+                                                              updateState(() {
+                                                                isDraft = false;
+                                                              });
+                                                              ScaffoldMessenger
+                                                                      .of(context)
+                                                                  .showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                      "Terjadi kesalahan"),
+                                                                ),
+                                                              );
+                                                            }
+                                                            c.cancelEdit();
+                                                            setState(() {
+                                                              produkDipilih
+                                                                  .clear();
+                                                              produkDipilihSet
+                                                                  .clear();
+                                                              _subTotalPerItem
+                                                                  .clear();
+                                                              _totalDiskon = 0;
+                                                              _diskonNominal
+                                                                  .clear();
+                                                              _diskonPersen
+                                                                  .clear();
+                                                              total = 0;
+                                                              _controllers
+                                                                  .forEach((key,
+                                                                      value) {
+                                                                value.text = "";
+                                                              });
+                                                            });
+                                                          }).catchError(
+                                                                  (onError) {
+                                                            updateState(() {
+                                                              isDraft = false;
+                                                            });
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                    "Terjadi kesalahan"),
+                                                              ),
+                                                            );
+                                                          });
+                                                        } else {
                                                           ScaffoldMessenger.of(
                                                                   context)
                                                               .showSnackBar(
                                                             SnackBar(
                                                               content: Text(
-                                                                  "Terjadi kesalahan"),
+                                                                val.message,
+                                                              ),
                                                             ),
                                                           );
-                                                        }
-                                                        c.cancelEdit();
-                                                        setState(() {
-                                                          produkDipilih.clear();
-                                                          produkDipilihSet
-                                                              .clear();
-                                                          _subTotalPerItem
-                                                              .clear();
-                                                          _totalDiskon = 0;
-                                                          _diskonNominal
-                                                              .clear();
-                                                          _diskonPersen.clear();
-                                                          total = 0;
-                                                          _controllers.forEach(
-                                                              (key, value) {
-                                                            value.text = "";
+                                                          c.cancelEdit();
+                                                          setState(() {
+                                                            produkDipilih
+                                                                .clear();
+                                                            produkDipilihSet
+                                                                .clear();
+                                                            _subTotalPerItem
+                                                                .clear();
+                                                            _totalDiskon = 0;
+                                                            _diskonNominal
+                                                                .clear();
+                                                            _diskonPersen
+                                                                .clear();
+                                                            total = 0;
+                                                            _controllers
+                                                                .forEach((key,
+                                                                    value) {
+                                                              value.text = "";
+                                                            });
                                                           });
-                                                        });
-                                                      }).catchError((onError) {
-                                                        updateState(() {
-                                                          isDraft = false;
-                                                        });
-                                                        ScaffoldMessenger.of(
-                                                                context)
-                                                            .showSnackBar(
-                                                          SnackBar(
-                                                            content: Text(
-                                                                "Terjadi kesalahan"),
-                                                          ),
-                                                        );
-                                                      });
+                                                        }
+                                                      }).onError(
+                                                        (error, stackTrace) {
+                                                          print(error);
+                                                          print(stackTrace);
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            SnackBar(
+                                                              content: Text(error
+                                                                  .toString()),
+                                                            ),
+                                                          );
+                                                          c.setReload(true);
+                                                        },
+                                                      );
                                                       Navigator.pop(context);
                                                     },
                                             ),
@@ -1608,6 +1783,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                               ),
                                               onPressed: () {
                                                 Navigator.pop(context);
+                                                c.setReload(true);
                                                 setState(() {
                                                   produkDipilih.clear();
                                                   produkDipilihSet.clear();
@@ -1620,7 +1796,9 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                       .forEach((key, value) {
                                                     value.text = "";
                                                   });
+                                                  isPause = false;
                                                 });
+                                                _controller.restart();
                                               },
                                             ),
                                           ],
@@ -1674,7 +1852,29 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                     pelangganSelected != "Pilih Customer" &&
                                     total > 0
                                 ? () {
-                                    _navigateAndDisplayResult(context);
+                                    futureCheckStock().then((val) async {
+                                      if (val.success) {
+                                        _navigateAndDisplayResult(context);
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              val.message,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }).onError((error, stackTrace) {
+                                      print(error);
+                                      print(stackTrace);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(error.toString()),
+                                        ),
+                                      );
+                                    });
                                   }
                                 : null,
                             child: Text("BAYAR"),

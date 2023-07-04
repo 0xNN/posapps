@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:posapps/db/db.dart';
 import 'package:posapps/models/gudang.dart';
+import 'package:posapps/models/metode_bayar.dart';
 import 'package:posapps/models/pelanggan.dart';
 import 'package:posapps/models/produk.dart';
 import 'package:posapps/models/produk_kategori.dart';
 import 'package:posapps/models/salesman.dart';
+import 'package:posapps/models/status_bayar.dart';
 import 'package:posapps/pages/penjualan.dart';
 import 'package:posapps/pages/transaksi.dart';
 import 'package:posapps/resources/string.dart';
@@ -83,10 +85,13 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final Controller c = Get.put(Controller());
+
   DBHelper dbHelper = DBHelper();
 
   bool isLoading = false;
   bool isLoadingSave = false;
+
+  bool isUpdateTransaksi = false;
 
   Future<SalesmanRes> futureSalesmanRes() async {
     String url = '${API_URL}PosApps/Salesman';
@@ -101,13 +106,31 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<MetodeBayarRes> futureMetodeBayar() async {
+    String url = "${API_URL}PosApps/MetodeBayar";
+    final response = await http.get(
+      Uri.parse(url),
+    );
+    if (response.statusCode == 200) {
+      return MetodeBayarRes.fromJson(response.body);
+    } else {
+      throw Exception('Failed to load data');
+    }
+  }
+
   String salesmanSelected = "Pilih Salesman";
+  String statusPembayaranSelected = "Pilih Status Pembayaran";
+
   List<SalesmanData> salesmanData;
+  List<String> statusBayar = ["Lunas", "Belum Lunas"];
+
   Map<String, SalesmanData> salesmanMap = {};
 
   TextEditingController _namaController = TextEditingController();
   TextEditingController _alamatController = TextEditingController();
   TextEditingController _teleponController = TextEditingController();
+
+  TextEditingController _searchController = TextEditingController();
 
   Future<GudangRes> futureGudangRes() async {
     String url = '${API_URL}PosApps/Gudang';
@@ -189,13 +212,30 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<StatusBayarRes> futureStatusBayarRes() async {
+    String url = '${API_URL}PosApps/StatusBayar';
+    print(url);
+    final response =
+        await http.get(Uri.parse(url), headers: {"Accept": "application/json"});
+    if (response.statusCode == 200) {
+      print(response.body);
+      return StatusBayarRes.fromMap(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load StatusBayar');
+    }
+  }
+
   List<GudangData> gudangData;
   List<ProdukKategoriData> produkKategoriData;
   List<ProdukData> produkData;
+  List<ProdukData> produkDataOriginal;
 
   Map<String, GudangData> gudangDataMap = {};
   Map<String, ProdukKategoriData> produkKategoriDataMap = {};
   Map<String, ProdukData> produkDataMap = {};
+
+  List<StatusBayarData> statusBayarData;
+  Map<String, StatusBayarData> statusBayarDataMap = {};
 
   PageSection section = PageSection.PENJUALAN;
 
@@ -261,6 +301,19 @@ class _MyHomePageState extends State<MyHomePage> {
       print(error);
       print(stackTrace);
     });
+    futureStatusBayarRes().then((value) async {
+      if (value != null) {
+        for (StatusBayarData data in value.data) {
+          statusBayarDataMap[data.nama] = data;
+        }
+        setState(() {
+          statusBayarData = value.data;
+        });
+      }
+    }).onError((error, stackTrace) {
+      print(error);
+      print(stackTrace);
+    });
     futureProdukKategoriRes().then((value) async {
       if (value != null) {
         if (MODE != "api") {
@@ -292,6 +345,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 }
                 setState(() {
                   produkData = value.data;
+                  produkDataOriginal = value.data;
                 });
               }
               if (MODE != "api") {
@@ -500,6 +554,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             futureProdukRes().then((value) {
                               setState(() {
                                 produkData = value.data;
+                                produkDataOriginal = value.data;
                                 isReset = true;
                               });
                             });
@@ -590,6 +645,19 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+  void _reload() {
+    if (c.isReload) {
+      futureProdukRes().then((value) {
+        setState(() {
+          produkData = value.data;
+          produkDataOriginal = value.data;
+          isReset = true;
+        });
+      });
+      c.isReload = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget body;
@@ -601,11 +669,13 @@ class _MyHomePageState extends State<MyHomePage> {
         body = PenjualanPage(
           produkDatas: produkData == null ? [] : produkData,
           reset: isReset,
+          reload: _reload,
         );
         break;
       case "transaksi":
         body = TransaksiPage(
           refresh: _refresh,
+          isUpdate: isUpdateTransaksi,
         );
         break;
       default:
@@ -647,6 +717,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             futureProdukRes().then((value) {
                               setState(() {
                                 produkData = value.data;
+                                produkDataOriginal = value.data;
                                 isReset = true;
                               });
                             });
@@ -896,7 +967,80 @@ class _MyHomePageState extends State<MyHomePage> {
             : null,
         actions: c.activePage == "penjualan"
             ? <Widget>[
-                IconButton(icon: Icon(Icons.search), onPressed: () {}),
+                //Search Input
+                Container(
+                  width: MediaQuery.of(context).size.width * 0.3,
+                  margin: EdgeInsets.only(
+                    right: 10,
+                    top: 10,
+                    bottom: 10,
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: "Cari Produk",
+                      contentPadding: EdgeInsets.only(left: 5),
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.white,
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Colors.white,
+                          width: 1,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Colors.white,
+                          width: 1,
+                        ),
+                      ),
+                      border: OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          Icons.search,
+                          color: Colors.grey,
+                          size: 14,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (_searchController.text.isEmpty) {
+                              produkData = produkDataOriginal;
+                            } else {
+                              produkData = produkData
+                                  .where(
+                                    (element) => element.produk
+                                        .toLowerCase()
+                                        .contains(
+                                          _searchController.text.toLowerCase(),
+                                        ),
+                                  )
+                                  .toList();
+                            }
+                            isReset = true;
+                          });
+                        },
+                      ),
+                    ),
+                    onSubmitted: (value) {
+                      setState(() {
+                        if (_searchController.text.isEmpty) {
+                          produkData = produkDataOriginal;
+                        } else {
+                          produkData = produkData
+                              .where(
+                                (element) =>
+                                    element.produk.toLowerCase().contains(
+                                          _searchController.text.toLowerCase(),
+                                        ),
+                              )
+                              .toList();
+                        }
+                        isReset = true;
+                      });
+                    },
+                  ),
+                ),
                 // IconButton(icon: Icon(Icons.upload), onPressed: () {}),
                 // IconButton(
                 //   icon: Icon(Icons.inventory),
@@ -906,7 +1050,171 @@ class _MyHomePageState extends State<MyHomePage> {
                 //   },
                 // ),
               ]
-            : null,
+            : <Widget>[
+                IconButton(
+                  icon: Icon(Icons.filter_alt),
+                  onPressed: () {
+                    showDialog(
+                        context: context,
+                        builder: (context) {
+                          return StatefulBuilder(builder:
+                              (BuildContext context, StateSetter updateState) {
+                            return AlertDialog(
+                              title: Text("Filter"),
+                              content: SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.3,
+                                child: Column(
+                                  children: [
+                                    // Pilih Salesman
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade300,
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      width: MediaQuery.of(context).size.width,
+                                      padding: EdgeInsets.all(4),
+                                      child: InkWell(
+                                        onTap: () {
+                                          SelectDialog.showModal<String>(
+                                            context,
+                                            label: "List Salesman",
+                                            selectedValue: salesmanSelected,
+                                            items: salesmanData == null
+                                                ? []
+                                                : salesmanData
+                                                    .map((SalesmanData item) {
+                                                    return item.nama;
+                                                  }).toList(),
+                                            onChange: (String selected) async {
+                                              updateState(() {
+                                                salesmanSelected = selected;
+                                              });
+                                            },
+                                            constraints: BoxConstraints(
+                                                maxHeight: 400, maxWidth: 400),
+                                          );
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              salesmanSelected,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Icon(Icons.arrow_drop_down,
+                                                color: Colors.white),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 15),
+                                    // Pilih Status Pembayaran
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade300,
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      width: MediaQuery.of(context).size.width,
+                                      padding: EdgeInsets.all(4),
+                                      child: InkWell(
+                                        onTap: () {
+                                          SelectDialog.showModal<String>(
+                                            context,
+                                            label: "List Status Pembayaran",
+                                            selectedValue:
+                                                statusPembayaranSelected,
+                                            items: statusBayarData == null
+                                                ? []
+                                                : statusBayarData.map(
+                                                    (StatusBayarData item) {
+                                                    return item.nama;
+                                                  }).toList(),
+                                            onChange: (String selected) async {
+                                              updateState(() {
+                                                statusPembayaranSelected =
+                                                    selected;
+                                              });
+                                            },
+                                            constraints: BoxConstraints(
+                                                maxHeight: 400, maxWidth: 400),
+                                          );
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              statusPembayaranSelected,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Icon(Icons.arrow_drop_down,
+                                                color: Colors.white),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Spacer(),
+                                    // Button Filter
+                                    SizedBox(
+                                      width: MediaQuery.of(context).size.width,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          primary: Colors.purple,
+                                          onPrimary: Colors.white,
+                                          elevation: 0,
+                                        ),
+                                        onPressed: () {
+                                          if (statusPembayaranSelected ==
+                                              "Pilih Status Pembayaran") {
+                                            c.setStatusBayar("");
+                                          } else {
+                                            c.setStatusBayar(statusBayarData
+                                                .where((element) =>
+                                                    element.nama ==
+                                                    statusPembayaranSelected)
+                                                .first
+                                                .id
+                                                .toString());
+                                          }
+                                          if (salesmanSelected ==
+                                              "Pilih Salesman") {
+                                            c.setSalesmanId("");
+                                          } else {
+                                            c.setSalesmanId(salesmanData
+                                                .where((element) =>
+                                                    element.nama ==
+                                                    salesmanSelected)
+                                                .first
+                                                .id
+                                                .toString());
+                                          }
+
+                                          setState(() {
+                                            isUpdateTransaksi = true;
+                                          });
+                                          Navigator.pop(context);
+                                        },
+                                        child: Text("Filter"),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          });
+                        });
+                  },
+                ),
+              ],
       ),
       drawer: Drawer(
         child: ListView(
