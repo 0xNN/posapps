@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ import 'package:posapps/resources/string.dart';
 import 'package:posapps/db/db.dart';
 import 'package:timer_count_down/timer_controller.dart';
 import 'package:timer_count_down/timer_count_down.dart';
+import 'package:progress_dialog_null_safe/progress_dialog_null_safe.dart';
 
 class CurrencyFormat {
   static String convertToIdr(dynamic number, int decimalDigit) {
@@ -37,7 +39,9 @@ class PenjualanPage extends StatefulWidget {
   static const String routeName = '/penjualan';
   final List<ProdukData> produkDatas;
   final bool reset;
-  const PenjualanPage({Key key, this.produkDatas, this.reset, this.reload})
+  final bool bySearch;
+  const PenjualanPage(
+      {Key key, this.produkDatas, this.reset, this.reload, this.bySearch})
       : super(key: key);
 
   @override
@@ -46,9 +50,9 @@ class PenjualanPage extends StatefulWidget {
 
 class _PenjualanPageState extends State<PenjualanPage> {
   final c = Get.put(Controller());
-  final CountdownController _controller =
-      new CountdownController(autoStart: true);
+  final CountdownController _controller = CountdownController(autoStart: true);
   DBHelper dbHelper = DBHelper();
+  ProgressDialog pd = ProgressDialog(Get.context);
 
   double total = 0;
   int _totalDiskon = 0;
@@ -57,7 +61,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
   bool isBatal = false;
 
   List<ProdukData> produkDipilih = [];
-  Set<ProdukData> produkDipilihSet = {};
+  Set<ProdukData> produkDipilihSet = Set<ProdukData>();
 
   final Map<String, int> _subTotalPerItem = {};
 
@@ -68,19 +72,23 @@ class _PenjualanPageState extends State<PenjualanPage> {
   final Map<String, double> _diskonPersen = {};
 
   Future<SalesmanRes> futureSalesmanRes() async {
+    // await pd.show();
     String url = '${API_URL}PosApps/Salesman';
     print(url);
     final response =
         await http.get(Uri.parse(url), headers: {"Accept": "application/json"});
     if (response.statusCode == 200) {
       print(response.body);
+      // await pd.hide();
       return SalesmanRes.fromMap(jsonDecode(response.body));
     } else {
+      // await pd.hide();
       throw Exception('Failed to load Salesman');
     }
   }
 
   Future<PelangganRes> futurePelangganRes(String salesmanId) async {
+    // await pd.show();
     String url = '${API_URL}PosApps/Pelanggan';
     print(salesmanId);
     if (salesmanId != null && salesmanId.isNotEmpty) {
@@ -91,13 +99,16 @@ class _PenjualanPageState extends State<PenjualanPage> {
         await http.get(Uri.parse(url), headers: {"Accept": "application/json"});
     if (response.statusCode == 200) {
       print(response.body);
+      // await pd.hide();
       return PelangganRes.fromMap(jsonDecode(response.body));
     } else {
+      // await pd.hide();
       throw Exception('Failed to load Pelanggan');
     }
   }
 
   Future<InvoiceSaveRes> futureInvoiceSave() async {
+    // await pd.show();
     String url = "${API_URL}PosApps/InvoiceSave";
     List<Map<String, dynamic>> invoiceDetail = [];
     for (var element in produkDipilihSet) {
@@ -155,8 +166,10 @@ class _PenjualanPageState extends State<PenjualanPage> {
     );
     if (response.statusCode == 200) {
       print(response.body);
+      // await pd.hide();
       return InvoiceSaveRes.fromMap(jsonDecode(response.body));
     } else {
+      // await pd.hide();
       throw Exception('Failed to load data');
     }
   }
@@ -258,11 +271,14 @@ class _PenjualanPageState extends State<PenjualanPage> {
         value.text = "";
       });
       isPause = false;
+      salesmanSelected = "Pilih Salesman";
+      pelangganSelected = "Pilih Customer";
     });
     _controller.restart();
   }
 
   Future<InvoiceRes> futureInvoice(String id) async {
+    // await pd.show();
     String url = '${API_URL}PosApps/Invoice';
     print(url);
     Map<String, dynamic> body = {
@@ -270,6 +286,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
       "Status": "",
       "StatusLunas": "",
     };
+    print(body);
     url = url + '?' + Uri(queryParameters: body).query;
     final response = await http.get(
       Uri.parse(url),
@@ -277,16 +294,20 @@ class _PenjualanPageState extends State<PenjualanPage> {
     );
     if (response.statusCode == 200) {
       print(response.body);
+      // await pd.hide();
       return InvoiceRes.fromMap(jsonDecode(response.body));
     } else {
+      // await pd.hide();
       throw Exception('Failed to load invoice');
     }
   }
 
-  Future<ProdukRes> futureProdukFromEditRes() async {
+  Future<ProdukRes> futureProdukFromEditRes(String id) async {
+    // await pd.show();
     String url = '${API_URL}PosApps/Produk';
     print(url);
     Map<String, dynamic> body = {
+      "ProdukId": id ?? "",
       "PelangganId": "",
       "SubKategoriId": "",
     };
@@ -297,13 +318,16 @@ class _PenjualanPageState extends State<PenjualanPage> {
     );
     if (response.statusCode == 200) {
       print(response.body);
+      // await pd.hide();
       return ProdukRes.fromMap(jsonDecode(response.body));
     } else {
+      // await pd.hide();
       throw Exception('Failed to load Produk');
     }
   }
 
   Future<CheckStockRes> futureCheckStock() async {
+    // await pd.show();
     String url = '${API_URL}PosApps/CheckStok';
     print(url);
     List<Map<String, dynamic>> invoiceDetail = [];
@@ -342,14 +366,29 @@ class _PenjualanPageState extends State<PenjualanPage> {
     );
     if (response.statusCode == 200) {
       print(response.body);
+      // await pd.hide();
       return CheckStockRes.fromMap(jsonDecode(response.body));
     } else {
+      // await pd.hide();
       throw Exception('Failed to load Produk');
     }
   }
 
   @override
   void initState() {
+    pd = ProgressDialog(context,
+        type: ProgressDialogType.normal, isDismissible: false, showLogs: true);
+    setState(() {
+      for (ProdukData element in widget.produkDatas) {
+        _controllers[element.rowUniqueId] = TextEditingController(text: "");
+        _diskonNominal[element.rowUniqueId] = 0;
+        _diskonPersen[element.rowUniqueId] = 0.0;
+      }
+      produkDipilih.clear();
+      produkDipilihSet.clear();
+      total = 0;
+    });
+
     futureSalesmanRes().then((value) async {
       if (MODE != "api") {
         if (value != null) {
@@ -395,67 +434,12 @@ class _PenjualanPageState extends State<PenjualanPage> {
             for (PelangganData data in value.data) {
               pelangganMap[data.nama] = data;
             }
-            setState(() {
-              pelangganData = value.data;
-            });
+            if (mounted) {
+              setState(() {
+                pelangganData = value.data;
+              });
+            }
           }
-        }
-        print("INIT");
-        if (c.isEdit) {
-          futureInvoice(c.invoiceId).then((value) {
-            setState(() {
-              invoiceData = value.data.listInvoice[0];
-              salesmanSelected = invoiceData.salesman;
-              pelangganSelected = invoiceData.pelanggan;
-            });
-            futureProdukFromEditRes().then((value) async {
-              if (value != null) {
-                if (MODE != "api") {
-                  for (ProdukData produk in value.data) {
-                    await dbHelper.insertProduk(produk);
-                  }
-                } else {
-                  for (ProdukData element in value.data) {
-                    produkDataMap[element.produk] = element;
-                    for (DetailInvoice e in invoiceData.detailInvoice) {
-                      if (e.rowUniqueId == element.rowUniqueId) {
-                        produkDipilih.add(element);
-                        produkDipilihSet.add(element);
-
-                        total += double.parse(element.hargaJual);
-                        for (var e in produkDipilihSet) {
-                          int produkLength = produkDipilih
-                              .where((element) =>
-                                  element.produkId == e.produkId &&
-                                  element.rowUniqueId == e.rowUniqueId)
-                              .toList()
-                              .length;
-                          _subTotalPerItem[e.rowUniqueId] = produkLength *
-                              (int.parse(e.hargaJual) -
-                                  _diskonNominal[e.rowUniqueId]);
-                          print(_subTotalPerItem[e.rowUniqueId]);
-                        }
-                      }
-                    }
-                  }
-                  setState(() {});
-                }
-                if (MODE != "api") {
-                  await dbHelper.produks().then((value) {
-                    setState(() {
-                      produkDipilih.addAll(value);
-                      produkDipilihSet.addAll(value);
-                    });
-                  });
-                }
-              }
-            }).catchError((error) {
-              print("ERROR: $error");
-            });
-          }).onError((error, stackTrace) {
-            print(error);
-            print(stackTrace);
-          });
         }
       }).onError((error, stackTrace) {
         print(error);
@@ -465,18 +449,73 @@ class _PenjualanPageState extends State<PenjualanPage> {
       print(error);
       print(stackTrace);
     });
-
-    setState(() {
-      for (ProdukData element in widget.produkDatas) {
-        _controllers[element.rowUniqueId] = TextEditingController(text: "");
-        _diskonNominal[element.rowUniqueId] = 0;
-        _diskonPersen[element.rowUniqueId] = 0.0;
-      }
-      produkDipilih.clear();
-      produkDipilihSet.clear();
-      total = 0;
-    });
-
+    if (c.isEdit) {
+      print("INIT");
+      futureInvoice(c.invoiceId).then((value) {
+        setState(() {
+          invoiceData = value.data.listInvoice[0];
+          salesmanSelected = invoiceData.salesman;
+          pelangganSelected = invoiceData.pelanggan;
+        });
+        for (DetailInvoice element in invoiceData.detailInvoice) {
+          futureProdukFromEditRes(element.produkId).then((v) async {
+            if (value != null) {
+              if (MODE != "api") {
+                for (ProdukData produk in v.data) {
+                  await dbHelper.insertProduk(produk);
+                }
+              } else {
+                if (v.data.isNotEmpty) {
+                  if (mounted) {
+                    setState(() {
+                      produkDipilih.add(v.data[0]);
+                      // produkDipilihSet.add(v.data[0]);
+                      produkDipilihSet.where((e) {
+                        if (e.rowUniqueId == v.data[0].rowUniqueId &&
+                            e.produkId == v.data[0].produkId) {
+                          return true;
+                        } else {
+                          return false;
+                        }
+                      }).isEmpty
+                          ? produkDipilihSet.add(v.data[0])
+                          : null;
+                      total += double.parse(v.data[0].hargaJual);
+                      for (var e in produkDipilihSet) {
+                        int produkLength = produkDipilih
+                            .where((element) =>
+                                element.produkId == e.produkId &&
+                                element.rowUniqueId == e.rowUniqueId)
+                            .toList()
+                            .length;
+                        _subTotalPerItem[e.rowUniqueId] =
+                            produkLength * int.parse(e.hargaJual);
+                        print(_subTotalPerItem[e.rowUniqueId]);
+                      }
+                      _controller.pause();
+                      isPause = true;
+                    });
+                  }
+                }
+              }
+              if (MODE != "api") {
+                await dbHelper.produks().then((value) {
+                  setState(() {
+                    produkDipilih.addAll(value);
+                    produkDipilihSet.addAll(value);
+                  });
+                });
+              }
+            }
+          }).catchError((error) {
+            print("ERROR: $error");
+          });
+        }
+      }).onError((error, stackTrace) {
+        print(error);
+        print(stackTrace);
+      });
+    }
     super.initState();
   }
 
@@ -505,29 +544,39 @@ class _PenjualanPageState extends State<PenjualanPage> {
       });
     }
     if (oldWidget.reset) {
-      setState(() {
-        for (ProdukData element in widget.produkDatas) {
-          _controllers[element.rowUniqueId] = TextEditingController(text: "");
-          _diskonNominal[element.rowUniqueId] = 0;
-          _diskonPersen[element.rowUniqueId] = 0.0;
-        }
-        produkDipilih.clear();
-        produkDipilihSet.clear();
-        total = 0;
-        _subTotalPerItem.clear();
-      });
+      if (widget.bySearch) {
+        print("MASUK BY SEARCH TRUE 1");
+      } else {
+        print("MASUK BY SEARCH FALSE 1");
+        setState(() {
+          for (ProdukData element in widget.produkDatas) {
+            _controllers[element.rowUniqueId] = TextEditingController(text: "");
+            _diskonNominal[element.rowUniqueId] = 0;
+            _diskonPersen[element.rowUniqueId] = 0.0;
+          }
+          produkDipilih.clear();
+          produkDipilihSet.clear();
+          total = 0;
+          _subTotalPerItem.clear();
+        });
+      }
     } else {
-      setState(() {
-        for (ProdukData element in widget.produkDatas) {
-          _controllers[element.rowUniqueId] = TextEditingController(text: "");
-          _diskonNominal[element.rowUniqueId] = 0;
-          _diskonPersen[element.rowUniqueId] = 0.0;
-        }
-        produkDipilih.clear();
-        produkDipilihSet.clear();
-        total = 0;
-        _subTotalPerItem.clear();
-      });
+      if (widget.bySearch) {
+        print("MASUK BY SEARCH TRUE 2");
+      } else {
+        print("MASUK BY SEARCH FALSE 2");
+        setState(() {
+          for (ProdukData element in widget.produkDatas) {
+            _controllers[element.rowUniqueId] = TextEditingController(text: "");
+            _diskonNominal[element.rowUniqueId] = 0;
+            _diskonPersen[element.rowUniqueId] = 0.0;
+          }
+          produkDipilih.clear();
+          produkDipilihSet.clear();
+          total = 0;
+          _subTotalPerItem.clear();
+        });
+      }
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -619,8 +668,24 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                     setState(() {
                                       produkDipilih
                                           .add(widget.produkDatas[index]);
-                                      produkDipilihSet
-                                          .add(widget.produkDatas[index]);
+                                      // Cek if exists then add to produkDipilihSet
+                                      produkDipilihSet.where((element) {
+                                        if (element.rowUniqueId ==
+                                                widget.produkDatas[index]
+                                                    .rowUniqueId &&
+                                            element.produkId ==
+                                                widget.produkDatas[index]
+                                                    .produkId) {
+                                          return true;
+                                        } else {
+                                          return false;
+                                        }
+                                      }).isEmpty
+                                          ? produkDipilihSet
+                                              .add(widget.produkDatas[index])
+                                          : null;
+                                      // produkDipilihSet
+                                      //     .add(widget.produkDatas[index]);
                                       total += double.parse(
                                           widget.produkDatas[index].hargaJual);
                                       for (var e in produkDipilihSet) {
@@ -634,9 +699,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                             .length;
                                         _subTotalPerItem[e.rowUniqueId] =
                                             produkLength *
-                                                (int.parse(e.hargaJual) -
-                                                    _diskonNominal[
-                                                        e.rowUniqueId]);
+                                                int.parse(e.hargaJual);
                                         print(_subTotalPerItem[e.rowUniqueId]);
                                       }
                                     });
@@ -685,6 +748,16 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                           ],
                                         );
                                       });
+                                }
+                                print("PRODUK DIPILIH SET");
+                                print(produkDipilihSet.length);
+                                print(produkDipilihSet);
+                                for (var element in produkDipilihSet) {
+                                  print(element.produk +
+                                      " " +
+                                      element.rowUniqueId +
+                                      " " +
+                                      element.produkId);
                                 }
                               },
                               child: Container(
@@ -878,7 +951,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
                 // crossAxisAlignment: CrossAxisAlignment.center,
                 // mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  produkDipilih.isEmpty
+                  produkDipilihSet.isEmpty
                       ? Expanded(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -990,14 +1063,10 @@ class _PenjualanPageState extends State<PenjualanPage> {
 
                                                           CurrencyFormat.convertToIdr(
                                                               produkLength *
-                                                                  (int.parse(produkDipilihSet
-                                                                          .elementAt(
-                                                                              index)
-                                                                          .hargaJual) -
-                                                                      _diskonNominal[produkDipilihSet
-                                                                          .elementAt(
-                                                                              index)
-                                                                          .rowUniqueId]),
+                                                                  int.parse(produkDipilihSet
+                                                                      .elementAt(
+                                                                          index)
+                                                                      .hargaJual),
                                                               0),
                                                       style: TextStyle(
                                                         fontSize: 12.0,
@@ -1311,16 +1380,9 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                       .elementAt(index)
                                                       .rowUniqueId] =
                                                   produkLengthNew *
-                                                      (int.parse(
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .hargaJual) -
-                                                          _diskonNominal[
-                                                              produkDipilihSet
-                                                                  .elementAt(
-                                                                      index)
-                                                                  .rowUniqueId]);
+                                                      int.parse(produkDipilihSet
+                                                          .elementAt(index)
+                                                          .hargaJual);
 
                                               _subTotalPerItem[produkDipilihSet
                                                       .elementAt(index)
@@ -1663,6 +1725,42 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                                             .message),
                                                                   ),
                                                                 );
+                                                                c.cancelEdit();
+                                                                c.setSalesman(
+                                                                    "");
+                                                                c.setPelanggan(
+                                                                    "");
+                                                                c.setStatusBayar(
+                                                                    "");
+                                                                setState(() {
+                                                                  isPause =
+                                                                      false;
+                                                                  produkDipilih
+                                                                      .clear();
+                                                                  produkDipilihSet
+                                                                      .clear();
+                                                                  _subTotalPerItem
+                                                                      .clear();
+                                                                  _totalDiskon =
+                                                                      0;
+                                                                  _diskonNominal
+                                                                      .clear();
+                                                                  _diskonPersen
+                                                                      .clear();
+                                                                  total = 0;
+                                                                  _controllers
+                                                                      .forEach((key,
+                                                                          value) {
+                                                                    value.text =
+                                                                        "";
+                                                                  });
+                                                                  salesmanSelected =
+                                                                      "Pilih Salesman";
+                                                                  pelangganSelected =
+                                                                      "Pilih Pelanggan";
+                                                                });
+                                                                _controller
+                                                                    .restart();
                                                               } else {
                                                                 updateState(() {
                                                                   isDraft =
@@ -1691,26 +1789,6 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                                 ),
                                                               );
                                                             }
-                                                            c.cancelEdit();
-                                                            setState(() {
-                                                              produkDipilih
-                                                                  .clear();
-                                                              produkDipilihSet
-                                                                  .clear();
-                                                              _subTotalPerItem
-                                                                  .clear();
-                                                              _totalDiskon = 0;
-                                                              _diskonNominal
-                                                                  .clear();
-                                                              _diskonPersen
-                                                                  .clear();
-                                                              total = 0;
-                                                              _controllers
-                                                                  .forEach((key,
-                                                                      value) {
-                                                                value.text = "";
-                                                              });
-                                                            });
                                                           }).catchError(
                                                                   (onError) {
                                                             updateState(() {
@@ -1735,26 +1813,26 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                               ),
                                                             ),
                                                           );
-                                                          c.cancelEdit();
-                                                          setState(() {
-                                                            produkDipilih
-                                                                .clear();
-                                                            produkDipilihSet
-                                                                .clear();
-                                                            _subTotalPerItem
-                                                                .clear();
-                                                            _totalDiskon = 0;
-                                                            _diskonNominal
-                                                                .clear();
-                                                            _diskonPersen
-                                                                .clear();
-                                                            total = 0;
-                                                            _controllers
-                                                                .forEach((key,
-                                                                    value) {
-                                                              value.text = "";
-                                                            });
-                                                          });
+                                                          // c.cancelEdit();
+                                                          // setState(() {
+                                                          //   produkDipilih
+                                                          //       .clear();
+                                                          //   produkDipilihSet
+                                                          //       .clear();
+                                                          //   _subTotalPerItem
+                                                          //       .clear();
+                                                          //   _totalDiskon = 0;
+                                                          //   _diskonNominal
+                                                          //       .clear();
+                                                          //   _diskonPersen
+                                                          //       .clear();
+                                                          //   total = 0;
+                                                          //   _controllers
+                                                          //       .forEach((key,
+                                                          //           value) {
+                                                          //     value.text = "";
+                                                          //   });
+                                                          // });
                                                         }
                                                       }).onError(
                                                         (error, stackTrace) {
@@ -1797,6 +1875,10 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                     value.text = "";
                                                   });
                                                   isPause = false;
+                                                  salesmanSelected =
+                                                      "Pilih Salesman";
+                                                  pelangganSelected =
+                                                      "Pilih Customer";
                                                 });
                                                 _controller.restart();
                                               },

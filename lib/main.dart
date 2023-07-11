@@ -9,6 +9,7 @@ import 'package:posapps/models/pelanggan.dart';
 import 'package:posapps/models/produk.dart';
 import 'package:posapps/models/produk_kategori.dart';
 import 'package:posapps/models/salesman.dart';
+import 'package:posapps/models/salesman_filter.dart';
 import 'package:posapps/models/status_bayar.dart';
 import 'package:posapps/pages/penjualan.dart';
 import 'package:posapps/pages/transaksi.dart';
@@ -22,6 +23,7 @@ import 'package:http/http.dart' as http;
 import 'package:select_dialog/select_dialog.dart';
 import 'package:get/get.dart';
 import 'package:posapps/store/store.dart';
+import 'package:date_time_picker/date_time_picker.dart';
 
 enum PageSection {
   PENJUALAN,
@@ -57,14 +59,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
+    return GetMaterialApp(
+      title: 'Medeq POS',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         androidOverscrollIndicator: androidOverscrollIndicator,
       ),
       onGenerateRoute: router.generateRoute,
-      home: const MyHomePage(title: 'POS MEDEQ'),
+      home: const MyHomePage(title: 'Medeq POS'),
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaleFactor: 0.82),
@@ -86,12 +88,16 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final Controller c = Get.put(Controller());
 
+  String date = "";
+
   DBHelper dbHelper = DBHelper();
 
   bool isLoading = false;
   bool isLoadingSave = false;
 
   bool isUpdateTransaksi = false;
+
+  final TextEditingController _dateController = TextEditingController(text: '');
 
   Future<SalesmanRes> futureSalesmanRes() async {
     String url = '${API_URL}PosApps/Salesman';
@@ -103,6 +109,19 @@ class _MyHomePageState extends State<MyHomePage> {
       return SalesmanRes.fromMap(jsonDecode(response.body));
     } else {
       throw Exception('Failed to load Salesman');
+    }
+  }
+
+  Future<SalesmanFilterRes> futureSalesmanFilterRes() async {
+    String url = '${API_URL}PosApps/SalesmanFilter';
+    print(url);
+    final response =
+        await http.get(Uri.parse(url), headers: {"Accept": "application/json"});
+    if (response.statusCode == 200) {
+      print(response.body);
+      return SalesmanFilterRes.fromMap(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load SalesmanFilter');
     }
   }
 
@@ -119,12 +138,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   String salesmanSelected = "Pilih Salesman";
+  String salesmanFilterSelected = "Pilih Salesman";
   String statusPembayaranSelected = "Pilih Status Pembayaran";
 
   List<SalesmanData> salesmanData;
   List<String> statusBayar = ["Lunas", "Belum Lunas"];
+  List<SalesmanFilterData> salesmanFilterData;
 
   Map<String, SalesmanData> salesmanMap = {};
+  Map<String, SalesmanFilterData> salesmanFilterMap = {};
 
   TextEditingController _namaController = TextEditingController();
   TextEditingController _alamatController = TextEditingController();
@@ -252,6 +274,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String activePage = "penjualan";
 
   bool isReset = false;
+  bool isBySearch = false;
 
   Future<void> _getId() async {
     final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
@@ -294,6 +317,40 @@ class _MyHomePageState extends State<MyHomePage> {
           }
           setState(() {
             salesmanData = value.data;
+          });
+        }
+      }
+    }).onError((error, stackTrace) {
+      print(error);
+      print(stackTrace);
+    });
+    futureSalesmanFilterRes().then((value) async {
+      if (MODE != "api") {
+        // if (value != null) {
+        //   for (SalesmanData data in value.data) {
+        //     await dbHelper.insertSalesman(data);
+        //   }
+        // }
+        dbHelper.salesmans().then((value) {
+          for (SalesmanData element in value) {
+            salesmanMap[element.nama] = element;
+          }
+          setState(() {
+            salesmanData = value;
+          });
+        });
+      } else {
+        if (value != null) {
+          String namaDefault = "";
+          for (SalesmanFilterData data in value.data) {
+            salesmanFilterMap[data.nama] = data;
+            if (data.isDefault == 1) {
+              namaDefault = data.nama;
+            }
+          }
+          setState(() {
+            salesmanFilterData = value.data;
+            salesmanFilterSelected = namaDefault;
           });
         }
       }
@@ -405,14 +462,38 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _drawerHeader(String id) {
     return UserAccountsDrawerHeader(
-      currentAccountPicture: ClipOval(
-        child: Icon(
-          Icons.person,
-          color: Colors.white,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey.shade200,
+            width: 1,
+          ),
         ),
       ),
-      accountName: Text('Demo Apps'),
-      accountEmail: Text("Device ID: $id"),
+      currentAccountPicture: ClipOval(
+        // child: Icon(
+        //   Icons.person,
+        //   color: Colors.white,
+        // ),
+        child: Image.asset(
+          'images/logo-medeq.png',
+          // fit: BoxFit.cover,
+          width: 50,
+        ),
+      ),
+      accountName: Text(
+        'Medeq POS',
+        style: TextStyle(
+          color: Colors.black,
+        ),
+      ),
+      accountEmail: Text(
+        "Device ID: ${id ?? "-"}",
+        style: TextStyle(
+          color: Colors.black,
+        ),
+      ),
     );
   }
 
@@ -661,15 +742,15 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     Widget body;
-    print("ONEEEEE");
-    print(isReset);
-    print(produkData);
+    print("BUILDDDD");
+    print(isBySearch);
     switch (c.activePage.value) {
       case "penjualan":
         body = PenjualanPage(
           produkDatas: produkData == null ? [] : produkData,
           reset: isReset,
           reload: _reload,
+          bySearch: isBySearch,
         );
         break;
       case "transaksi":
@@ -1017,7 +1098,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                   )
                                   .toList();
                             }
-                            isReset = true;
+                            isBySearch = true;
                           });
                         },
                       ),
@@ -1036,7 +1117,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               )
                               .toList();
                         }
-                        isReset = true;
+                        isBySearch = true;
                       });
                     },
                   ),
@@ -1078,16 +1159,18 @@ class _MyHomePageState extends State<MyHomePage> {
                                           SelectDialog.showModal<String>(
                                             context,
                                             label: "List Salesman",
-                                            selectedValue: salesmanSelected,
-                                            items: salesmanData == null
+                                            selectedValue:
+                                                salesmanFilterSelected,
+                                            items: salesmanFilterData == null
                                                 ? []
-                                                : salesmanData
-                                                    .map((SalesmanData item) {
+                                                : salesmanFilterData.map(
+                                                    (SalesmanFilterData item) {
                                                     return item.nama;
                                                   }).toList(),
                                             onChange: (String selected) async {
                                               updateState(() {
-                                                salesmanSelected = selected;
+                                                salesmanFilterSelected =
+                                                    selected;
                                               });
                                             },
                                             constraints: BoxConstraints(
@@ -1099,7 +1182,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                               MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              salesmanSelected,
+                                              salesmanFilterSelected,
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 14,
@@ -1162,6 +1245,63 @@ class _MyHomePageState extends State<MyHomePage> {
                                         ),
                                       ),
                                     ),
+                                    SizedBox(height: 15),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: DateTimePicker(
+                                            controller: _dateController,
+                                            decoration: InputDecoration(
+                                              border: OutlineInputBorder(),
+                                              labelText: 'Tanggal',
+                                              suffixIcon:
+                                                  Icon(Icons.date_range),
+                                              isDense: true,
+                                            ),
+                                            // initialValue: date,
+                                            type: DateTimePickerType.date,
+                                            initialDate: DateTime.now(),
+                                            firstDate: DateTime(2000),
+                                            lastDate: DateTime(2100),
+                                            dateLabelText: 'Tanggal',
+                                            dateMask: 'yyyy-MM-dd',
+                                            onChanged: (val) {
+                                              print(val);
+                                              print("CHANGED");
+                                              // setState(() {
+                                              //   date = val;
+                                              // });
+                                              _dateController.text = val;
+                                              c.setTanggal(val);
+                                            },
+                                            validator: (val) {
+                                              print(val);
+                                              return null;
+                                            },
+                                            onSaved: (val) {
+                                              print(val);
+                                              print("SAVED");
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(width: 10),
+                                        // Clear
+                                        InkWell(
+                                          onTap: () {
+                                            // Navigator.pop(context);
+                                            c.setTanggal("");
+                                            updateState(() {
+                                              _dateController.text = "";
+                                            });
+                                          },
+                                          child: Icon(
+                                            Icons.clear,
+                                            color: Colors.red,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                     Spacer(),
                                     // Button Filter
                                     SizedBox(
@@ -1185,19 +1325,25 @@ class _MyHomePageState extends State<MyHomePage> {
                                                 .id
                                                 .toString());
                                           }
-                                          if (salesmanSelected ==
+                                          if (salesmanFilterSelected ==
                                               "Pilih Salesman") {
                                             c.setSalesmanId("");
                                           } else {
-                                            c.setSalesmanId(salesmanData
+                                            c.setSalesmanId(salesmanFilterData
                                                 .where((element) =>
                                                     element.nama ==
-                                                    salesmanSelected)
+                                                    salesmanFilterSelected)
                                                 .first
                                                 .id
                                                 .toString());
                                           }
-
+                                          // if (date.isEmpty) {
+                                          //   c.setTanggal("");
+                                          // } else {
+                                          //   c.setTanggal(date);
+                                          // }
+                                          print("SALESMAN FILTER");
+                                          print(c.salesmanId);
                                           setState(() {
                                             isUpdateTransaksi = true;
                                           });
@@ -1217,6 +1363,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
       ),
       drawer: Drawer(
+        backgroundColor: Colors.white,
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
@@ -1231,6 +1378,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 // });
                 setState(() {
                   c.setActivePage("penjualan");
+                  c.cancelEdit();
+                  c.setSalesman("");
+                  c.setPelanggan("");
+                  c.setStatusBayar("");
                 });
               },
               selected: c.activePage == "penjualan",
@@ -1245,6 +1396,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 // });
                 setState(() {
                   c.setActivePage("transaksi");
+                  c.cancelEdit();
+                  c.setSalesman("");
+                  c.setPelanggan("");
+                  c.setStatusBayar("");
                 });
               },
               selected: c.activePage == "transaksi",

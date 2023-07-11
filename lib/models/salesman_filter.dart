@@ -1,32 +1,33 @@
 // To parse  this JSON data, do
 //
-//     final statusBayarRes = statusBayarResFromMap(jsonString);
+//     final salesmanFilterRes = salesmanFilterResFromMap(jsonString);
 
 import 'dart:convert';
 
-class StatusBayarRes {
+class SalesmanFilterRes {
   bool success;
   String message;
-  List<StatusBayarData> data;
+  List<SalesmanFilterData> data;
 
-  StatusBayarRes({
+  SalesmanFilterRes({
     this.success,
     this.message,
     this.data,
   });
 
-  factory StatusBayarRes.fromJson(String str) =>
-      StatusBayarRes.fromMap(json.decode(str));
+  factory SalesmanFilterRes.fromJson(String str) =>
+      SalesmanFilterRes.fromMap(json.decode(str));
 
   String toJson() => json.encode(toMap());
 
-  factory StatusBayarRes.fromMap(Map<String, dynamic> json) => StatusBayarRes(
+  factory SalesmanFilterRes.fromMap(Map<String, dynamic> json) =>
+      SalesmanFilterRes(
         success: json["success"],
         message: json["message"],
         data: json["data"] == null
             ? []
-            : List<StatusBayarData>.from(
-                json["data"].map((x) => StatusBayarData.fromMap(x))),
+            : List<SalesmanFilterData>.from(
+                json["data"].map((x) => SalesmanFilterData.fromMap(x))),
       );
 
   Map<String, dynamic> toMap() => {
@@ -37,24 +38,25 @@ class StatusBayarRes {
       };
 }
 
-class StatusBayarData {
+class SalesmanFilterData {
   String id;
   String nama;
-  String isDefault;
+  int isDefault;
 
-  StatusBayarData({
+  SalesmanFilterData({
     this.id,
     this.nama,
     this.isDefault,
   });
 
-  factory StatusBayarData.fromJson(String str) =>
-      StatusBayarData.fromMap(json.decode(str));
+  factory SalesmanFilterData.fromJson(String str) =>
+      SalesmanFilterData.fromMap(json.decode(str));
 
   String toJson() => json.encode(toMap());
 
-  factory StatusBayarData.fromMap(Map<String, dynamic> json) => StatusBayarData(
-        id: json["Id"],
+  factory SalesmanFilterData.fromMap(Map<String, dynamic> json) =>
+      SalesmanFilterData(
+        id: json["Id"].toString(),
         nama: json["Nama"],
         isDefault: json["IsDefault"],
       );

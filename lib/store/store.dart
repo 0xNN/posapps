@@ -8,6 +8,7 @@ class Controller extends GetxController {
   var activePage = 'penjualan'.obs;
   var salesman = ''.obs;
   var pelanggan = ''.obs;
+  var tanggal = ''.obs;
   var statusBayar = ''.obs;
   var salesmanId = ''.obs;
   bool isReload = false;
@@ -51,6 +52,11 @@ class Controller extends GetxController {
 
   setReload(bool isReload) {
     this.isReload = isReload;
+    update();
+  }
+
+  setTanggal(tanggal) {
+    this.tanggal.value = tanggal;
     update();
   }
 }

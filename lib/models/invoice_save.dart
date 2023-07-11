@@ -1,4 +1,4 @@
-// To parse this JSON data, do
+// To parse  this JSON data, do
 //
 //     final invoiceSaveRes = invoiceSaveResFromMap(jsonString);
 
@@ -30,7 +30,7 @@ class InvoiceSaveRes {
   Map<String, dynamic> toMap() => {
         "success": success,
         "message": message,
-        "data": data?.toMap(),
+        "data": data.toMap(),
       };
 }
 

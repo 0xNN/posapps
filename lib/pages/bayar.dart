@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:posapps/resources/string.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:posapps/store/store.dart';
+import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 
 class CurrencyFormat {
   static String convertToIdr(dynamic number, int decimalDigit) {
@@ -44,13 +45,13 @@ class _BayarPageState extends State<BayarPage> {
 
   final TextEditingController _textEditingController = TextEditingController();
   final TextEditingController _textDiskonController =
-      TextEditingController(text: "0");
+      TextEditingController(text: "");
   final TextEditingController _textPersentaseController =
-      TextEditingController(text: "0");
+      TextEditingController(text: "");
   final TextEditingController _textPembulatanController =
-      TextEditingController(text: "0");
+      TextEditingController(text: "");
   final TextEditingController _textPembayaranController =
-      TextEditingController(text: "0");
+      TextEditingController(text: "");
 
   int totalHarga = 0;
   int totalSetelahDiskon = 0;
@@ -100,14 +101,15 @@ class _BayarPageState extends State<BayarPage> {
     Map<String, dynamic> body = {
       "SalesmanId": widget.args.salesmanId,
       "PelangganId": widget.args.pelangganId,
-      "DiskonNominal":
-          _textDiskonController.text.isEmpty ? "0" : _textDiskonController.text,
+      "DiskonNominal": _textDiskonController.text.isEmpty
+          ? "0"
+          : _textDiskonController.text.replaceAll(".", ""),
       "SubTotal": totalHarga.toString(),
       "Pembulatan": _textPembulatanController.text.isEmpty
           ? "0"
-          : _textPembulatanController.text,
+          : _textPembulatanController.text.replaceAll(".", ""),
       "PPN": ppn.toString(),
-      "NominalBayar": _textPembayaranController.text,
+      "NominalBayar": _textPembayaranController.text.replaceAll(".", ""),
       "RekeningId": metodeBayarSelectedMap[metodeBayarSelected].id,
       // "IsStatusInvoice": isPublish ? "PUBLISHED" : "DRAFT",
       "IsStatusInvoice": "PUBLISHED",
@@ -139,8 +141,12 @@ class _BayarPageState extends State<BayarPage> {
     // totalHarga = widget.args.totalHarga.toInt() - widget.args.diskon;
     totalHarga = widget.args.totalHarga.toInt();
     totalSetelahDiskon = totalHarga -
-        int.parse(_textDiskonController.text) -
-        int.parse(_textPembulatanController.text);
+        int.parse(_textDiskonController.text.isEmpty
+            ? "0"
+            : _textDiskonController.text.replaceAll(".", "")) -
+        int.parse(_textPembulatanController.text.isEmpty
+            ? "0"
+            : _textPembulatanController.text);
     ppn = (0.11 * totalSetelahDiskon).round();
     futureMetodeBayar().then((value) {
       setState(() {
@@ -230,26 +236,61 @@ class _BayarPageState extends State<BayarPage> {
                                         border: OutlineInputBorder(),
                                         isDense: true,
                                         contentPadding: EdgeInsets.all(6),
+                                        hintText: "Diskon Nominal",
                                       ),
                                       keyboardType: TextInputType.number,
                                       onChanged: (value) {
                                         setState(() {
-                                          if (value == "") {
-                                            _textDiskonController.text = "0";
-                                          }
+                                          // if (value == "") {
+                                          //   _textDiskonController.text = "0";
+                                          // }
+                                          String diskon = value.isEmpty
+                                              ? "0"
+                                              : value.replaceAll(".", "");
                                           _textPersentaseController.text =
-                                              ((int.parse(value) / totalHarga) *
+                                              ((int.parse(diskon ?? "0") /
+                                                          totalHarga) *
                                                       100)
-                                                  .toStringAsFixed(2);
+                                                  .toStringAsFixed(2)
+                                                  .replaceAll(".", ",");
                                           totalSetelahDiskon = totalHarga -
-                                              int.parse(value) -
-                                              int.parse(
-                                                  _textPembulatanController
+                                              int.parse(diskon ?? "0") -
+                                              int.parse(_textPembulatanController
+                                                      .text.isEmpty
+                                                  ? "0"
+                                                  : _textPembulatanController
                                                       .text);
-                                          ppn = (0.11 * totalSetelahDiskon)
-                                              .round();
+                                          if (isPpn) {
+                                            ppn = (0.11 * totalSetelahDiskon)
+                                                .round();
+                                          } else {
+                                            ppn = 0;
+                                          }
+                                          if (isLunas) {
+                                            _textPembayaranController
+                                                .text = ((totalHarga -
+                                                        (diskon == null
+                                                            ? 0
+                                                            : int.parse(
+                                                                diskon)) -
+                                                        (_textPembulatanController
+                                                                .text.isEmpty
+                                                            ? 0
+                                                            : int.parse(
+                                                                _textPembulatanController
+                                                                    .text))) +
+                                                    ppn)
+                                                .toString();
+                                          }
                                         });
                                       },
+                                      inputFormatters: [
+                                        MoneyInputFormatter(
+                                          mantissaLength: 0,
+                                          thousandSeparator:
+                                              ThousandSeparator.Period,
+                                        )
+                                      ],
                                       enabled: true,
                                     ),
                                   ),
@@ -263,26 +304,72 @@ class _BayarPageState extends State<BayarPage> {
                                         border: OutlineInputBorder(),
                                         isDense: true,
                                         contentPadding: EdgeInsets.all(6),
+                                        hintText: "Persentase",
                                       ),
                                       keyboardType: TextInputType.number,
                                       onChanged: (value) {
                                         setState(() {
-                                          if (value == "") {
+                                          // if (value == "") {
+                                          //   _textPersentaseController.text =
+                                          //       "0";
+                                          // }
+                                          // cek value is double
+                                          if (value.contains(".")) {
                                             _textPersentaseController.text =
-                                                "0";
+                                                value.replaceAll(".", ",");
+                                            _textPersentaseController
+                                                .selection = TextSelection(
+                                              baseOffset: value.length,
+                                              extentOffset: value.length,
+                                            );
                                           }
-                                          _textDiskonController.text =
-                                              ((int.parse(value) / 100) *
-                                                      totalHarga)
-                                                  .toStringAsFixed(0);
-                                          totalSetelahDiskon = totalHarga -
-                                              int.parse(
-                                                  _textDiskonController.text) -
-                                              int.parse(
-                                                  _textPembulatanController
+                                          double persentase = double.parse(
+                                              _textPersentaseController
+                                                      .text.isEmpty
+                                                  ? "0"
+                                                  : _textPersentaseController
                                                       .text);
-                                          ppn = (0.11 * totalSetelahDiskon)
-                                              .round();
+                                          _textDiskonController.text =
+                                              ((persentase / 100) * totalHarga)
+                                                  .toStringAsFixed(0)
+                                                  .toCurrencyString(
+                                                    thousandSeparator:
+                                                        ThousandSeparator
+                                                            .Period,
+                                                    mantissaLength: 0,
+                                                  );
+                                          String diskon = _textDiskonController
+                                              .text
+                                              .replaceAll(".", "");
+                                          totalSetelahDiskon = totalHarga -
+                                              int.parse(diskon ?? "0") -
+                                              int.parse(_textPembulatanController
+                                                      .text.isEmpty
+                                                  ? "0"
+                                                  : _textPembulatanController
+                                                      .text);
+                                          if (isPpn) {
+                                            ppn = (0.11 * totalSetelahDiskon)
+                                                .round();
+                                          } else {
+                                            ppn = 0;
+                                          }
+                                          if (isLunas) {
+                                            _textPembayaranController
+                                                .text = ((totalHarga -
+                                                        (diskon == null
+                                                            ? 0
+                                                            : int.parse(
+                                                                diskon)) -
+                                                        (_textPembulatanController
+                                                                .text.isEmpty
+                                                            ? 0
+                                                            : int.parse(
+                                                                _textPembulatanController
+                                                                    .text))) +
+                                                    ppn)
+                                                .toString();
+                                          }
                                         });
                                       },
                                       enabled: true,
@@ -360,17 +447,52 @@ class _BayarPageState extends State<BayarPage> {
                                   border: OutlineInputBorder(),
                                   isDense: true,
                                   contentPadding: EdgeInsets.all(6),
+                                  hintText: "Pembulatan",
                                 ),
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  MoneyInputFormatter(
+                                    mantissaLength: 0,
+                                    thousandSeparator: ThousandSeparator.Period,
+                                  )
+                                ],
                                 onChanged: (value) {
                                   setState(() {
-                                    if (value == "") {
-                                      _textPembulatanController.text = "0";
-                                    }
+                                    // if (value == "") {
+                                    //   _textPembulatanController.text = "0";
+                                    // }
+                                    String diskon =
+                                        _textDiskonController.text.isEmpty
+                                            ? "0"
+                                            : _textDiskonController.text
+                                                .replaceAll(".", "");
+
+                                    String pembulatan =
+                                        _textPembulatanController.text.isEmpty
+                                            ? "0"
+                                            : _textPembulatanController.text
+                                                .replaceAll(".", "");
                                     totalSetelahDiskon = totalHarga -
-                                        int.parse(_textDiskonController.text) -
-                                        int.parse(value);
-                                    ppn = (0.11 * totalSetelahDiskon).round();
+                                        int.parse(diskon ?? "0") -
+                                        int.parse(pembulatan ?? "0");
+                                    if (isPpn) {
+                                      ppn = (0.11 * totalSetelahDiskon).round();
+                                    } else {
+                                      ppn = 0;
+                                    }
+                                    if (isLunas) {
+                                      _textPembayaranController.text =
+                                          ((totalHarga -
+                                                      (diskon == null
+                                                          ? 0
+                                                          : int.parse(diskon)) -
+                                                      (pembulatan == null
+                                                          ? 0
+                                                          : int.parse(
+                                                              pembulatan))) +
+                                                  ppn)
+                                              .toString();
+                                    }
                                   });
                                 },
                                 enabled: true,
@@ -450,6 +572,28 @@ class _BayarPageState extends State<BayarPage> {
                                       } else {
                                         ppn = 0;
                                       }
+                                      if (isLunas) {
+                                        _textPembayaranController
+                                            .text = ((totalHarga -
+                                                    (_textDiskonController
+                                                            .text.isEmpty
+                                                        ? 0
+                                                        : int.parse(
+                                                            _textDiskonController
+                                                                .text
+                                                                .replaceAll(
+                                                                    ".", ""))) -
+                                                    (_textPembulatanController
+                                                            .text.isEmpty
+                                                        ? 0
+                                                        : int.parse(
+                                                            _textPembulatanController
+                                                                .text
+                                                                .replaceAll(".",
+                                                                    "")))) +
+                                                ppn)
+                                            .toString();
+                                      }
                                     });
                                   },
                                   activeColor: Colors.green,
@@ -497,21 +641,56 @@ class _BayarPageState extends State<BayarPage> {
                                 ),
                               ),
                             ),
-                            Text(
-                              CurrencyFormat.convertToIdr(
-                                  (totalHarga -
-                                          (_textDiskonController.text.isEmpty
-                                              ? 0
-                                              : int.parse(_textDiskonController
-                                                  .text))) +
-                                      ppn,
-                                  0),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
+                            isPpn
+                                ? Text(
+                                    CurrencyFormat.convertToIdr(
+                                        (totalHarga -
+                                                (_textDiskonController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textDiskonController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", ""))) -
+                                                (_textPembulatanController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textPembulatanController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", "")))) +
+                                            ppn,
+                                        0),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  )
+                                : Text(
+                                    CurrencyFormat.convertToIdr(
+                                        (totalHarga -
+                                            (_textDiskonController.text.isEmpty
+                                                ? 0
+                                                : int.parse(
+                                                    _textDiskonController.text
+                                                        .replaceAll(".", ""))) -
+                                            (_textPembulatanController
+                                                    .text.isEmpty
+                                                ? 0
+                                                : int.parse(
+                                                    _textPembulatanController
+                                                        .text
+                                                        .replaceAll(".", "")))),
+                                        0),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
                           ],
                         ),
                       ),
@@ -544,6 +723,12 @@ class _BayarPageState extends State<BayarPage> {
                                   isDense: true,
                                   contentPadding: EdgeInsets.all(6),
                                 ),
+                                inputFormatters: [
+                                  MoneyInputFormatter(
+                                    mantissaLength: 0,
+                                    thousandSeparator: ThousandSeparator.Period,
+                                  ),
+                                ],
                                 keyboardType: TextInputType.number,
                                 onChanged: (value) {},
                                 enabled: !isLunas,
@@ -566,6 +751,11 @@ class _BayarPageState extends State<BayarPage> {
                                 setState(() {
                                   isLunas = value;
                                   if (isLunas) {
+                                    if (isPpn) {
+                                      ppn = (0.11 * totalSetelahDiskon).round();
+                                    } else {
+                                      ppn = 0;
+                                    }
                                     _textPembayaranController
                                         .text = ((totalHarga -
                                                 (_textDiskonController
@@ -573,9 +763,24 @@ class _BayarPageState extends State<BayarPage> {
                                                     ? 0
                                                     : int.parse(
                                                         _textDiskonController
-                                                            .text))) +
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", ""))) -
+                                                (_textPembulatanController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textPembulatanController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", "")))) +
                                             ppn)
-                                        .toString();
+                                        .toString()
+                                        .toCurrencyString(
+                                          thousandSeparator:
+                                              ThousandSeparator.Period,
+                                          mantissaLength: 0,
+                                        );
                                   } else {
                                     _textPembayaranController.text = "";
                                   }
@@ -747,6 +952,9 @@ class _BayarPageState extends State<BayarPage> {
                           ),
                         );
                         c.cancelEdit();
+                        c.setSalesman("");
+                        c.setPelanggan("");
+                        c.setStatusBayar("");
                         Navigator.pop(context, 'success');
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(

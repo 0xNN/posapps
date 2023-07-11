@@ -1,4 +1,4 @@
-// To parse this JSON data, do
+// To parse  this JSON data, do
 //
 //     final pelangganRes = pelangganResFromMap(jsonString);
 
@@ -202,7 +202,7 @@ class PelangganData {
       };
 }
 
-// To parse this JSON data, do
+// To parse  this JSON data, do
 //
 //     final pelangganSaveRes = pelangganSaveResFromMap(jsonString);
 

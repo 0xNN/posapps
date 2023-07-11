@@ -1,4 +1,4 @@
-// To parse this JSON data, do
+// To parse  this JSON data, do
 //
 //     final invoiceRes = invoiceResFromMap(jsonString);
 
@@ -82,7 +82,9 @@ class ListInvoice {
   String salesman;
   String pelanggan;
   String metodeBayar;
+  String kode;
   String grandTotal;
+  String sisaTagihan;
   List<DetailInvoice> detailInvoice;
 
   ListInvoice({
@@ -102,7 +104,9 @@ class ListInvoice {
     this.salesman,
     this.pelanggan,
     this.metodeBayar,
+    this.kode,
     this.grandTotal,
+    this.sisaTagihan,
     this.detailInvoice,
   });
 
@@ -128,7 +132,9 @@ class ListInvoice {
         salesman: json["Salesman"],
         pelanggan: json["Pelanggan"],
         metodeBayar: json["MetodeBayar"],
+        kode: json["Kode"],
         grandTotal: json["GrandTotal"].toString(),
+        sisaTagihan: json["SisaTagihan"].toString(),
         detailInvoice: json["DetailInvoice"] == null
             ? []
             : List<DetailInvoice>.from(
@@ -152,7 +158,9 @@ class ListInvoice {
         "Salesman": salesman,
         "Pelanggan": pelanggan,
         "MetodeBayar": metodeBayar,
+        "Kode": kode,
         "GrandTotal": grandTotal,
+        "SisaTagihan": sisaTagihan,
         "DetailInvoice": detailInvoice == null
             ? []
             : List<dynamic>.from(detailInvoice.map((x) => x.toMap())),
@@ -163,6 +171,7 @@ class DetailInvoice {
   String invoiceId;
   String rowUniqueId;
   String produkId;
+  String produk;
   String gudangId;
   String qty;
   String harga;
@@ -174,6 +183,7 @@ class DetailInvoice {
     this.invoiceId,
     this.rowUniqueId,
     this.produkId,
+    this.produk,
     this.gudangId,
     this.qty,
     this.harga,
@@ -191,6 +201,7 @@ class DetailInvoice {
         invoiceId: json["InvoiceId"],
         rowUniqueId: json["RowUniqueId"],
         produkId: json["ProdukId"],
+        produk: json["Produk"],
         gudangId: json["GudangId"],
         qty: json["Qty"].toString(),
         harga: json["Harga"],
@@ -203,6 +214,7 @@ class DetailInvoice {
         "InvoiceId": invoiceId,
         "RowUniqueId": rowUniqueId,
         "ProdukId": produkId,
+        "Produk": produk,
         "GudangId": gudangId,
         "Qty": qty,
         "Harga": harga,
