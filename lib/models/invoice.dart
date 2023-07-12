@@ -76,6 +76,7 @@ class ListInvoice {
   String pembulatan;
   String subTotal;
   String ppn;
+  String noTelpPelanggan;
   String nominalBayar;
   String status;
   String statusLunas;
@@ -98,6 +99,7 @@ class ListInvoice {
     this.pembulatan,
     this.subTotal,
     this.ppn,
+    this.noTelpPelanggan,
     this.nominalBayar,
     this.status,
     this.statusLunas,
@@ -126,6 +128,7 @@ class ListInvoice {
         pembulatan: json["Pembulatan"].toString(),
         subTotal: json["SubTotal"].toString(),
         ppn: json["PPN"].toString(),
+        noTelpPelanggan: json["NoTelpPelanggan"].toString(),
         nominalBayar: json["NominalBayar"].toString(),
         status: json["Status"].toString(),
         statusLunas: json["StatusLunas"],
@@ -152,6 +155,7 @@ class ListInvoice {
         "Pembulatan": pembulatan,
         "SubTotal": subTotal,
         "PPN": ppn,
+        "NoTelpPelanggan": noTelpPelanggan,
         "NominalBayar": nominalBayar,
         "Status": status,
         "StatusLunas": statusLunas,

@@ -37,6 +37,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
   List<ListInvoice> invoiceData = [];
   List<ListInvoice> invoiceDataFiltered = [];
 
+  final TextEditingController _noWaController = TextEditingController(text: '');
+
   String date = "";
 
   DataSummary summary;
@@ -96,6 +98,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
     print(url);
     Map<String, dynamic> body = {
       "InvoiceId": invoiceId,
+      "NoTelpPelanggan":
+          _noWaController.text.isEmpty ? "" : _noWaController.text,
     };
     print(body.toString());
     url = url + '?' + Uri(queryParameters: body).query;
@@ -545,6 +549,9 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                           invoiceDataSelected =
                                               invoiceDataFiltered[index];
                                           detailInvoice.clear();
+                                          _noWaController.text =
+                                              invoiceDataSelected
+                                                  .noTelpPelanggan;
                                           for (DetailInvoice element
                                               in invoiceDataFiltered[index]
                                                   .detailInvoice) {
@@ -849,66 +856,71 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                             ),
                                             Spacer(),
                                             // send to whatsapp
-                                            if (invoiceDataSelected.status ==
-                                                "DRAFT")
-                                              GestureDetector(
-                                                onTap: () {
-                                                  showDialog(
-                                                      context: context,
-                                                      builder: (BuildContext
-                                                          context) {
-                                                        return AlertDialog(
-                                                          title: Text(
-                                                              "Peringatan"),
-                                                          content: Text(
-                                                              "Apakah anda yakin ingin mengirim invoice ini?"),
-                                                          actions: [
-                                                            TextButton(
-                                                              onPressed: () {
-                                                                Navigator.pop(
-                                                                    context);
-                                                              },
-                                                              child:
-                                                                  Text("Batal"),
-                                                            ),
-                                                            TextButton(
-                                                              onPressed: () {
-                                                                futureSendWa(
-                                                                        invoiceDataSelected
-                                                                            .id)
-                                                                    .then(
-                                                                        (value) {
-                                                                  if (value
-                                                                      .success) {
-                                                                    ScaffoldMessenger.of(
-                                                                            context)
-                                                                        .showSnackBar(
-                                                                            SnackBar(
-                                                                      content: Text(
-                                                                          "Invoice berhasil dikirim"),
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .green,
-                                                                    ));
-                                                                  } else {
-                                                                    ScaffoldMessenger.of(
-                                                                            context)
-                                                                        .showSnackBar(
-                                                                            SnackBar(
-                                                                      content: Text(
-                                                                          "Invoice gagal dikirim"),
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .red,
-                                                                    ));
-                                                                  }
-                                                                  Navigator.pop(
-                                                                      context);
-                                                                }).onError((error,
-                                                                        stackTrace) {
-                                                                  print(error);
-                                                                  print(
-                                                                      stackTrace);
+                                            // if (invoiceDataSelected.status ==
+                                            //     "DRAFT")
+                                            GestureDetector(
+                                              onTap: () {
+                                                showDialog(
+                                                    context: context,
+                                                    builder:
+                                                        (BuildContext context) {
+                                                      return AlertDialog(
+                                                        scrollable: true,
+                                                        title:
+                                                            Text("Konfirmasi"),
+                                                        // content: Text(
+                                                        //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                                        // Input no Whatsapp
+                                                        content: SizedBox(
+                                                          height: 100,
+                                                          child: Column(
+                                                            children: [
+                                                              TextFormField(
+                                                                controller:
+                                                                    _noWaController,
+                                                                keyboardType:
+                                                                    TextInputType
+                                                                        .number,
+                                                                decoration:
+                                                                    InputDecoration(
+                                                                  hintText:
+                                                                      "No Whatsapp",
+                                                                  border:
+                                                                      OutlineInputBorder(),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () {
+                                                              Navigator.pop(
+                                                                  context);
+                                                            },
+                                                            child:
+                                                                Text("Batal"),
+                                                          ),
+                                                          TextButton(
+                                                            onPressed: () {
+                                                              futureSendWa(
+                                                                      invoiceDataSelected
+                                                                          .id)
+                                                                  .then(
+                                                                      (value) {
+                                                                if (value
+                                                                    .success) {
+                                                                  ScaffoldMessenger.of(
+                                                                          context)
+                                                                      .showSnackBar(
+                                                                          SnackBar(
+                                                                    content: Text(
+                                                                        "Invoice berhasil dikirim"),
+                                                                    backgroundColor:
+                                                                        Colors
+                                                                            .green,
+                                                                  ));
+                                                                } else {
                                                                   ScaffoldMessenger.of(
                                                                           context)
                                                                       .showSnackBar(
@@ -919,56 +931,74 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                                         Colors
                                                                             .red,
                                                                   ));
-                                                                  Navigator.pop(
-                                                                      context);
-                                                                });
-                                                              },
-                                                              child: Text("Ya"),
-                                                            ),
-                                                          ],
-                                                        );
-                                                      });
-                                                },
-                                                child: Container(
-                                                  height: 20,
-                                                  decoration: BoxDecoration(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            5),
-                                                    color: Colors.green[600]
-                                                        .withOpacity(.8),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.green
-                                                            .withOpacity(0.5),
-                                                        spreadRadius: 2,
-                                                        blurRadius: 2,
-                                                        offset: Offset(0, 1),
+                                                                }
+                                                                Navigator.pop(
+                                                                    context);
+                                                              }).onError((error,
+                                                                      stackTrace) {
+                                                                print(error);
+                                                                print(
+                                                                    stackTrace);
+                                                                ScaffoldMessenger.of(
+                                                                        context)
+                                                                    .showSnackBar(
+                                                                        SnackBar(
+                                                                  content: Text(
+                                                                      "Invoice gagal dikirim"),
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red,
+                                                                ));
+                                                                Navigator.pop(
+                                                                    context);
+                                                              });
+                                                            },
+                                                            child:
+                                                                Text("Kirim"),
+                                                          ),
+                                                        ],
+                                                      );
+                                                    });
+                                              },
+                                              child: Container(
+                                                height: 20,
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(5),
+                                                  color: Colors.green[600]
+                                                      .withOpacity(.8),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.green
+                                                          .withOpacity(0.5),
+                                                      spreadRadius: 2,
+                                                      blurRadius: 2,
+                                                      offset: Offset(0, 1),
+                                                    ),
+                                                  ],
+                                                ),
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 5,
+                                                  vertical: 2,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Text(
+                                                      "Share to: ",
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 14,
                                                       ),
-                                                    ],
-                                                  ),
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 5,
-                                                    vertical: 2,
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Text(
-                                                        "Share to: ",
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 14,
-                                                        ),
-                                                      ),
-                                                      Image.asset(
-                                                        'images/whatsapp.png',
-                                                      ),
-                                                    ],
-                                                  ),
+                                                    ),
+                                                    Image.asset(
+                                                      'images/whatsapp.png',
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
+                                            ),
                                             SizedBox(
                                               width: 10,
                                             ),
@@ -1118,6 +1148,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                       builder: (BuildContext
                                                           context) {
                                                         return AlertDialog(
+                                                          scrollable: true,
                                                           title: Text(
                                                               "Konfirmasi"),
                                                           content: Text(
@@ -1282,6 +1313,11 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                 child: Text('Delete'),
                                               ),
                                             ],
+                                          ),
+                                        if (invoiceDataSelected.status !=
+                                            'DRAFT')
+                                          SizedBox(
+                                            height: 10,
                                           ),
                                       ],
                                     ),

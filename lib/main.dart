@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:posapps/db/db.dart';
 import 'package:posapps/models/gudang.dart';
 import 'package:posapps/models/metode_bayar.dart';
@@ -97,7 +98,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   bool isUpdateTransaksi = false;
 
-  final TextEditingController _dateController = TextEditingController(text: '');
+  // Default now date
+  final TextEditingController _dateController = TextEditingController(
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
 
   Future<SalesmanRes> futureSalesmanRes() async {
     String url = '${API_URL}PosApps/Salesman';
@@ -295,6 +298,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     // _getId();
     isLoading = true;
+    c.setTanggal(_dateController.text);
     futureSalesmanRes().then((value) async {
       if (MODE != "api") {
         if (value != null) {
@@ -834,207 +838,199 @@ class _MyHomePageState extends State<MyHomePage> {
                             return StatefulBuilder(
                                 builder: (context, updateState) {
                               return AlertDialog(
+                                scrollable: true,
                                 title: Text("Input Customer"),
                                 contentPadding:
                                     EdgeInsets.fromLTRB(24, 20, 24, 0),
-                                content: SingleChildScrollView(
-                                  scrollDirection: Axis.vertical,
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.shade300,
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                        ),
-                                        padding: EdgeInsets.all(4),
-                                        child: InkWell(
-                                          onTap: () {
-                                            SelectDialog.showModal<String>(
-                                              context,
-                                              label: "List Salesman",
-                                              selectedValue: salesmanSelected,
-                                              items: salesmanData == null
-                                                  ? []
-                                                  : salesmanData
-                                                      .map((SalesmanData item) {
-                                                      return item.nama;
-                                                    }).toList(),
-                                              onChange:
-                                                  (String selected) async {
-                                                updateState(() {
-                                                  salesmanSelected = selected;
-                                                });
-                                              },
-                                              constraints: BoxConstraints(
-                                                  maxHeight: 400,
-                                                  maxWidth: 400),
-                                            );
-                                          },
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                salesmanSelected,
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              Icon(Icons.arrow_drop_down,
-                                                  color: Colors.white),
-                                            ],
-                                          ),
-                                        ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade300,
+                                        borderRadius: BorderRadius.circular(5),
                                       ),
-                                      SizedBox(height: 10),
-                                      TextField(
-                                        controller: _namaController,
-                                        decoration: InputDecoration(
-                                          labelText: "Nama",
-                                          border: OutlineInputBorder(),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10),
-                                      TextField(
-                                        controller: _alamatController,
-                                        decoration: InputDecoration(
-                                          labelText: "Alamat",
-                                          border: OutlineInputBorder(),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10),
-                                      TextField(
-                                        controller: _teleponController,
-                                        decoration: InputDecoration(
-                                          labelText: "Telepon",
-                                          border: OutlineInputBorder(),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: [
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
+                                      padding: EdgeInsets.all(4),
+                                      child: InkWell(
+                                        onTap: () {
+                                          SelectDialog.showModal<String>(
+                                            context,
+                                            label: "List Salesman",
+                                            selectedValue: salesmanSelected,
+                                            items: salesmanData == null
+                                                ? []
+                                                : salesmanData
+                                                    .map((SalesmanData item) {
+                                                    return item.nama;
+                                                  }).toList(),
+                                            onChange: (String selected) async {
+                                              updateState(() {
+                                                salesmanSelected = selected;
+                                              });
                                             },
-                                            style: ElevatedButton.styleFrom(
-                                              primary: Colors.grey,
-                                              elevation: 0,
+                                            constraints: BoxConstraints(
+                                                maxHeight: 400, maxWidth: 400),
+                                          );
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              salesmanSelected,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
-                                            child: Text("Batal"),
+                                            Icon(Icons.arrow_drop_down,
+                                                color: Colors.white),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(height: 10),
+                                    TextField(
+                                      controller: _namaController,
+                                      decoration: InputDecoration(
+                                        labelText: "Nama",
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                    SizedBox(height: 10),
+                                    TextField(
+                                      controller: _alamatController,
+                                      decoration: InputDecoration(
+                                        labelText: "Alamat",
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                    SizedBox(height: 10),
+                                    TextField(
+                                      controller: _teleponController,
+                                      decoration: InputDecoration(
+                                        labelText: "No Whatsapp",
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                    SizedBox(height: 10),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            primary: Colors.grey,
+                                            elevation: 0,
                                           ),
-                                          SizedBox(width: 10),
-                                          ElevatedButton(
-                                            onPressed: () async {
-                                              if (salesmanSelected ==
-                                                  "Pilih Salesman") {
+                                          child: Text("Batal"),
+                                        ),
+                                        SizedBox(width: 10),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            if (salesmanSelected ==
+                                                "Pilih Salesman") {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      "Salesman tidak boleh kosong"),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            if (_namaController.text.isEmpty) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      "Nama tidak boleh kosong"),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            if (_alamatController
+                                                .text.isEmpty) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      "Alamat tidak boleh kosong"),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            if (_teleponController
+                                                .text.isEmpty) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      "Telepon tidak boleh kosong"),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            updateState(() {
+                                              isLoadingSave = true;
+                                            });
+                                            await futurePelangganSaveRes()
+                                                .then((value) {
+                                              if (value != null) {
+                                                Navigator.of(context).pop();
+                                                c.setSalesman(salesmanSelected);
+                                                c.setPelanggan(value.data.nama);
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                        "Salesman tidak boleh kosong"),
+                                                        "Berhasil disimpan"),
                                                   ),
                                                 );
-                                                return;
-                                              }
-                                              if (_namaController
-                                                  .text.isEmpty) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        "Nama tidak boleh kosong"),
-                                                  ),
-                                                );
-                                                return;
-                                              }
-                                              if (_alamatController
-                                                  .text.isEmpty) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        "Alamat tidak boleh kosong"),
-                                                  ),
-                                                );
-                                                return;
-                                              }
-                                              if (_teleponController
-                                                  .text.isEmpty) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        "Telepon tidak boleh kosong"),
-                                                  ),
-                                                );
-                                                return;
+                                                setState(() {
+                                                  isReset = true;
+                                                });
                                               }
                                               updateState(() {
-                                                isLoadingSave = true;
+                                                isLoadingSave = false;
                                               });
-                                              await futurePelangganSaveRes()
-                                                  .then((value) {
-                                                if (value != null) {
-                                                  Navigator.of(context).pop();
-                                                  c.setSalesman(
-                                                      salesmanSelected);
-                                                  c.setPelanggan(
-                                                      value.data.nama);
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                          "Berhasil disimpan"),
-                                                    ),
-                                                  );
-                                                  setState(() {
-                                                    isReset = true;
-                                                  });
-                                                }
-                                                updateState(() {
-                                                  isLoadingSave = false;
-                                                });
-                                              }).catchError((error) {
-                                                print("ERROR: $error");
-                                                updateState(() {
-                                                  isLoadingSave = false;
-                                                });
+                                            }).catchError((error) {
+                                              print("ERROR: $error");
+                                              updateState(() {
+                                                isLoadingSave = false;
                                               });
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              primary: Colors.blue.shade300,
-                                              elevation: 0,
-                                            ),
-                                            child: isLoadingSave
-                                                ? SizedBox(
-                                                    height: 20,
-                                                    width: 20,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                                  Color>(
-                                                              Colors.white),
-                                                    ),
-                                                  )
-                                                : Text("Simpan"),
+                                            });
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            primary: Colors.blue.shade300,
+                                            elevation: 0,
                                           ),
-                                        ],
-                                      )
-                                    ],
-                                  ),
+                                          child: isLoadingSave
+                                              ? SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                                Color>(
+                                                            Colors.white),
+                                                  ),
+                                                )
+                                              : Text("Simpan"),
+                                        ),
+                                      ],
+                                    )
+                                  ],
                                 ),
-                                actionsPadding:
-                                    MediaQuery.of(context).viewInsets,
-                                actionsOverflowDirection: VerticalDirection
-                                    .up, // button will be aligned to the top
+                                // actionsPadding:
+                                //     MediaQuery.of(context).viewInsets,
+                                // actionsOverflowDirection: VerticalDirection
+                                //     .up, // button will be aligned to the top
                                 actions: [],
                               );
                             });
@@ -1141,6 +1137,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           return StatefulBuilder(builder:
                               (BuildContext context, StateSetter updateState) {
                             return AlertDialog(
+                              // scrollable: true,
                               title: Text("Filter"),
                               content: SizedBox(
                                 width: MediaQuery.of(context).size.width * 0.3,
