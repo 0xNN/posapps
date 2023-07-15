@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:posapps/models/invoice_save.dart';
 import 'package:posapps/models/metode_bayar.dart';
 import 'package:posapps/models/produk.dart';
+import 'package:posapps/models/send_wa.dart';
 import 'package:posapps/pages/models/bayar.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -52,6 +53,8 @@ class _BayarPageState extends State<BayarPage> {
       TextEditingController(text: "");
   final TextEditingController _textPembayaranController =
       TextEditingController(text: "");
+
+  final TextEditingController _noWaController = TextEditingController(text: '');
 
   int totalHarga = 0;
   int totalSetelahDiskon = 0;
@@ -127,6 +130,28 @@ class _BayarPageState extends State<BayarPage> {
       return InvoiceSaveRes.fromMap(jsonDecode(response.body));
     } else {
       throw Exception('Failed to load data');
+    }
+  }
+
+  Future<SendWaRes> futureSendWa(String invoiceId) async {
+    String url = '${API_URL}PosApps/SendWa';
+    print(url);
+    Map<String, dynamic> body = {
+      "InvoiceId": invoiceId,
+      "NoTelpPelanggan":
+          _noWaController.text.isEmpty ? "" : _noWaController.text,
+    };
+    print(body.toString());
+    url = url + '?' + Uri(queryParameters: body).query;
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {"Accept": "application/json"},
+    );
+    if (response.statusCode == 200) {
+      print(response.body);
+      return SendWaRes.fromMap(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to send wa');
     }
   }
 
@@ -722,6 +747,7 @@ class _BayarPageState extends State<BayarPage> {
                                   border: OutlineInputBorder(),
                                   isDense: true,
                                   contentPadding: EdgeInsets.all(6),
+                                  hintText: 'Pembayaran',
                                 ),
                                 inputFormatters: [
                                   MoneyInputFormatter(
@@ -948,14 +974,85 @@ class _BayarPageState extends State<BayarPage> {
                       if (value.success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text("Berhasil menyimpan invoice"),
+                            content: Text(value.message),
                           ),
                         );
+                        _noWaController.text = value.data.noTelp;
                         c.cancelEdit();
                         c.setSalesman("");
                         c.setPelanggan("");
                         c.setStatusBayar("");
-                        Navigator.pop(context, 'success');
+
+                        showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                scrollable: true,
+                                title: Text("Konfirmasi"),
+                                // content: Text(
+                                //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                // Input no Whatsapp
+                                content: SizedBox(
+                                  height: 100,
+                                  child: Column(
+                                    children: [
+                                      TextFormField(
+                                        controller: _noWaController,
+                                        keyboardType: TextInputType.number,
+                                        decoration: InputDecoration(
+                                          hintText: "No Whatsapp",
+                                          border: OutlineInputBorder(),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      Navigator.pop(context, 'redirect');
+                                    },
+                                    child: Text("Batal"),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      await futureSendWa(value.data.invoiceId)
+                                          .then((value) {
+                                        if (value.success) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(SnackBar(
+                                            content: Text(
+                                                "Invoice berhasil dikirim"),
+                                            backgroundColor: Colors.green,
+                                          ));
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(SnackBar(
+                                            content:
+                                                Text("Invoice gagal dikirim"),
+                                            backgroundColor: Colors.red,
+                                          ));
+                                        }
+                                        Navigator.pop(context);
+                                      }).onError((error, stackTrace) {
+                                        print(error);
+                                        print(stackTrace);
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                          content:
+                                              Text("Invoice gagal dikirim"),
+                                          backgroundColor: Colors.red,
+                                        ));
+                                        Navigator.pop(context);
+                                      });
+                                      Navigator.pop(context, 'success');
+                                    },
+                                    child: Text("Kirim"),
+                                  ),
+                                ],
+                              );
+                            });
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(

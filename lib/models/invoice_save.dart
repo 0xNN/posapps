@@ -49,6 +49,8 @@ class InvoiceSaveData {
   int rowStatus;
   String updatedBy;
   String updatedAt;
+  String noTelp;
+  String invoiceId;
   List<InvoiceSaveDetailInvoice> detailInvoice;
 
   InvoiceSaveData({
@@ -66,6 +68,8 @@ class InvoiceSaveData {
     this.rowStatus,
     this.updatedBy,
     this.updatedAt,
+    this.noTelp,
+    this.invoiceId,
     this.detailInvoice,
   });
 
@@ -100,6 +104,9 @@ class InvoiceSaveData {
             json["UpdatedBy"] == null ? null : json["UpdatedBy"].toString(),
         updatedAt:
             json["UpdatedAt"] == null ? null : json["UpdatedAt"].toString(),
+        noTelp: json["NoTelp"] == null ? null : json["NoTelp"].toString(),
+        invoiceId:
+            json["InvoiceId"] == null ? null : json["InvoiceId"].toString(),
         detailInvoice: json["InvoiceSaveDetailInvoice"] == null
             ? []
             : List<InvoiceSaveDetailInvoice>.from(
@@ -122,6 +129,8 @@ class InvoiceSaveData {
         "RowStatus": rowStatus,
         "UpdatedBy": updatedBy,
         "UpdatedAt": updatedAt,
+        "NoTelp": noTelp,
+        "InvoiceId": invoiceId,
         "InvoiceSaveDetailInvoice": detailInvoice == null
             ? []
             : List<dynamic>.from(detailInvoice.map((x) => x.toMap())),

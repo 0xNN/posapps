@@ -727,6 +727,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _refresh() {
+    print("MASUK REFRERGHSS");
     setState(() {});
   }
 
@@ -755,6 +756,7 @@ class _MyHomePageState extends State<MyHomePage> {
           reset: isReset,
           reload: _reload,
           bySearch: isBySearch,
+          refresh: _refresh,
         );
         break;
       case "transaksi":

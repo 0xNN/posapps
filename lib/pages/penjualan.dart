@@ -40,8 +40,14 @@ class PenjualanPage extends StatefulWidget {
   final List<ProdukData> produkDatas;
   final bool reset;
   final bool bySearch;
+  final Function refresh;
   const PenjualanPage(
-      {Key key, this.produkDatas, this.reset, this.reload, this.bySearch})
+      {Key key,
+      this.produkDatas,
+      this.reset,
+      this.reload,
+      this.bySearch,
+      this.refresh})
       : super(key: key);
 
   @override
@@ -258,6 +264,8 @@ class _PenjualanPageState extends State<PenjualanPage> {
     if (!mounted) return;
 
     if (result == null) return;
+    print("RESULT");
+    print(result);
     setState(() {
       penerimaanPembayaran = "Pembayaran Selesai";
       produkDipilih.clear();
@@ -275,6 +283,10 @@ class _PenjualanPageState extends State<PenjualanPage> {
       pelangganSelected = "Pilih Customer";
     });
     _controller.restart();
+    c.setActivePage("transaksi");
+    c.setReload(false);
+    c.setTanggal(DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
+    widget.refresh();
   }
 
   Future<InvoiceRes> futureInvoice(String id) async {
