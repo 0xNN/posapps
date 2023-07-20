@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:posapps/models/invoice.dart';
 
 class Controller extends GetxController {
+  bool isActiveBayar = false;
   var count = 0.obs;
   bool isEdit = false;
   String invoiceId = '';
@@ -14,6 +15,11 @@ class Controller extends GetxController {
   bool isReload = false;
 
   increment() => count++;
+
+  setActiveBayar(bool isActiveBayar) {
+    this.isActiveBayar = isActiveBayar;
+    update();
+  }
 
   edit(String invoiceId) {
     isEdit = true;

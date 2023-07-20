@@ -866,8 +866,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                         (BuildContext context) {
                                                       return AlertDialog(
                                                         scrollable: true,
-                                                        title:
-                                                            Text("Konfirmasi"),
+                                                        title: Text(
+                                                            "Konfirmasi Whatsapp"),
                                                         // content: Text(
                                                         //     "Apakah anda yakin ingin mengirim invoice ini?"),
                                                         // Input no Whatsapp

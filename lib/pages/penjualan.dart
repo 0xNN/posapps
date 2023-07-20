@@ -19,6 +19,7 @@ import 'package:select_dialog/select_dialog.dart';
 import 'package:http/http.dart' as http;
 import 'package:posapps/resources/string.dart';
 import 'package:posapps/db/db.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timer_count_down/timer_controller.dart';
 import 'package:timer_count_down/timer_count_down.dart';
 import 'package:progress_dialog_null_safe/progress_dialog_null_safe.dart';
@@ -54,7 +55,8 @@ class PenjualanPage extends StatefulWidget {
   State<PenjualanPage> createState() => _PenjualanPageState();
 }
 
-class _PenjualanPageState extends State<PenjualanPage> {
+class _PenjualanPageState extends State<PenjualanPage>
+    with WidgetsBindingObserver {
   final c = Get.put(Controller());
   final CountdownController _controller = CountdownController(autoStart: true);
   DBHelper dbHelper = DBHelper();
@@ -113,8 +115,9 @@ class _PenjualanPageState extends State<PenjualanPage> {
     }
   }
 
-  Future<InvoiceSaveRes> futureInvoiceSave() async {
+  Future<InvoiceSaveRes> futureInvoiceSave(String userId) async {
     // await pd.show();
+
     String url = "${API_URL}PosApps/InvoiceSave";
     List<Map<String, dynamic>> invoiceDetail = [];
     for (var element in produkDipilihSet) {
@@ -163,6 +166,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
       "IsStatusInvoice": "DRAFT",
       "StatusLunas": "0",
       "InvoiceId": c.isEdit ? c.invoiceId : "",
+      "UserId": userId,
       "InvoiceDetail": jsonEncode(invoiceDetail),
     };
     print(body);
@@ -236,6 +240,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
           )
           .toString(),
     );
+    c.setActiveBayar(true);
     final result = await Navigator.pushNamed(
       context,
       BayarPage.routeName,
@@ -264,28 +269,50 @@ class _PenjualanPageState extends State<PenjualanPage> {
     if (!mounted) return;
 
     if (result == null) return;
-    print("RESULT");
-    print(result);
-    setState(() {
-      penerimaanPembayaran = "Pembayaran Selesai";
-      produkDipilih.clear();
-      produkDipilihSet.clear();
-      _subTotalPerItem.clear();
-      _totalDiskon = 0;
-      _diskonNominal.clear();
-      _diskonPersen.clear();
-      total = 0;
-      _controllers.forEach((key, value) {
-        value.text = "";
+    if (result == "cancel") {
+      print("RESULT");
+      print(result);
+      setState(() {
+        penerimaanPembayaran = "Pembayaran Batal";
+        produkDipilih.clear();
+        produkDipilihSet.clear();
+        _subTotalPerItem.clear();
+        _totalDiskon = 0;
+        _diskonNominal.clear();
+        _diskonPersen.clear();
+        total = 0;
+        _controllers.forEach((key, value) {
+          value.text = "";
+        });
+        isPause = false;
+        salesmanSelected = "Pilih Salesman";
+        pelangganSelected = "Pilih Customer";
       });
-      isPause = false;
-      salesmanSelected = "Pilih Salesman";
-      pelangganSelected = "Pilih Customer";
-    });
-    _controller.restart();
-    c.setActivePage("transaksi");
-    c.setReload(false);
-    c.setTanggal(DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
+      _controller.restart();
+    } else {
+      print("RESULT");
+      print(result);
+      setState(() {
+        penerimaanPembayaran = "Pembayaran Selesai";
+        produkDipilih.clear();
+        produkDipilihSet.clear();
+        _subTotalPerItem.clear();
+        _totalDiskon = 0;
+        _diskonNominal.clear();
+        _diskonPersen.clear();
+        total = 0;
+        _controllers.forEach((key, value) {
+          value.text = "";
+        });
+        isPause = false;
+        salesmanSelected = "Pilih Salesman";
+        pelangganSelected = "Pilih Customer";
+      });
+      _controller.restart();
+      c.setActivePage("transaksi");
+      c.setReload(false);
+      c.setTanggal(DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
+    }
     widget.refresh();
   }
 
@@ -529,16 +556,25 @@ class _PenjualanPageState extends State<PenjualanPage> {
       });
     }
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    print("DISPOSE");
     for (ProdukData element in widget.produkDatas) {
       if (_controllers[element.rowUniqueId] != null) {
         _controllers[element.rowUniqueId].dispose();
       }
     }
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    print("DEACTIVATE");
+    super.deactivate();
   }
 
   @override
@@ -555,28 +591,18 @@ class _PenjualanPageState extends State<PenjualanPage> {
         pelangganSelected = c.pelanggan.string;
       });
     }
+    if (!c.isReload) {
+      _controller.restart();
+    }
     if (oldWidget.reset) {
-      if (widget.bySearch) {
-        print("MASUK BY SEARCH TRUE 1");
-      } else {
-        print("MASUK BY SEARCH FALSE 1");
-        setState(() {
-          for (ProdukData element in widget.produkDatas) {
-            _controllers[element.rowUniqueId] = TextEditingController(text: "");
-            _diskonNominal[element.rowUniqueId] = 0;
-            _diskonPersen[element.rowUniqueId] = 0.0;
-          }
-          produkDipilih.clear();
-          produkDipilihSet.clear();
-          total = 0;
-          _subTotalPerItem.clear();
-        });
-      }
-    } else {
-      if (widget.bySearch) {
-        print("MASUK BY SEARCH TRUE 2");
-      } else {
-        print("MASUK BY SEARCH FALSE 2");
+      // if (widget.bySearch) {
+      //   print("MASUK BY SEARCH TRUE 1");
+      // } else {
+      // }
+      print("IS ACTIVE BAYAR");
+      print(c.isActiveBayar);
+      if (!c.isActiveBayar) {
+        print("MASUK BY SEARCH 1 WIDGET RESET TRUE");
         setState(() {
           for (ProdukData element in widget.produkDatas) {
             _controllers[element.rowUniqueId] = TextEditingController(text: "");
@@ -590,6 +616,24 @@ class _PenjualanPageState extends State<PenjualanPage> {
         });
       }
     }
+    //  else {
+    //   if (widget.bySearch) {
+    //     print("MASUK BY SEARCH TRUE 2");
+    //   } else {
+    //     print("MASUK BY SEARCH FALSE 2");
+    //     // setState(() {
+    //     //   for (ProdukData element in widget.produkDatas) {
+    //     //     _controllers[element.rowUniqueId] = TextEditingController(text: "");
+    //     //     _diskonNominal[element.rowUniqueId] = 0;
+    //     //     _diskonPersen[element.rowUniqueId] = 0.0;
+    //     //   }
+    //     //   produkDipilih.clear();
+    //     //   produkDipilihSet.clear();
+    //     //   total = 0;
+    //     //   _subTotalPerItem.clear();
+    //     // });
+    //   }
+    // }
     super.didUpdateWidget(oldWidget);
   }
 
@@ -639,10 +683,16 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                         ),
                                       ),
                                       interval: Duration(seconds: 1),
-                                      onFinished: () {
-                                        _controller.restart();
+                                      onFinished: () async {
+                                        // setState(() {
+                                        //   produkDipilih.clear();
+                                        //   produkDipilihSet.clear();
+                                        //   total = 0;
+                                        //   _subTotalPerItem.clear();
+                                        // });
                                         c.setReload(true);
                                         widget.reload();
+                                        _controller.restart();
                                       },
                                     ),
                                   ],
@@ -1321,6 +1371,7 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                       ),
                                       trailing: InkWell(
                                         onTap: () {
+                                          c.setReload(true);
                                           setState(() {
                                             total -= double.parse(
                                                 produkDipilihSet
@@ -1453,7 +1504,9 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                             print("PRODUK DIPILIH");
                                             print(produkDipilih.length);
                                             print(produkDipilihSet.length);
+                                            isPause = false;
                                           });
+                                          _controller.restart();
                                         },
                                         child: Container(
                                           height: 20,
@@ -1713,13 +1766,31 @@ class _PenjualanPageState extends State<PenjualanPage> {
                                                   : () async {
                                                       // _navigateAndDisplayResult(
                                                       //     context);
+                                                      final SharedPreferences
+                                                          prefs =
+                                                          await SharedPreferences
+                                                              .getInstance();
+                                                      String userId = prefs
+                                                          .getString("user_id");
+                                                      if (userId == null) {
+                                                        ScaffoldMessenger.of(
+                                                                context)
+                                                            .showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                                "User belum dipilih"),
+                                                          ),
+                                                        );
+                                                        return;
+                                                      }
                                                       await futureCheckStock()
                                                           .then((val) async {
                                                         if (val.success) {
                                                           updateState(() {
                                                             isDraft = true;
                                                           });
-                                                          await futureInvoiceSave()
+                                                          await futureInvoiceSave(
+                                                                  userId)
                                                               .then((value) {
                                                             if (value != null) {
                                                               if (value

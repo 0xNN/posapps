@@ -12,6 +12,7 @@ import 'package:posapps/models/produk_kategori.dart';
 import 'package:posapps/models/salesman.dart';
 import 'package:posapps/models/salesman_filter.dart';
 import 'package:posapps/models/status_bayar.dart';
+import 'package:posapps/models/user.dart';
 import 'package:posapps/pages/penjualan.dart';
 import 'package:posapps/pages/transaksi.dart';
 import 'package:posapps/resources/string.dart';
@@ -25,6 +26,8 @@ import 'package:select_dialog/select_dialog.dart';
 import 'package:get/get.dart';
 import 'package:posapps/store/store.dart';
 import 'package:date_time_picker/date_time_picker.dart';
+import 'package:flutter_overlay_loader/flutter_overlay_loader.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum PageSection {
   PENJUALAN,
@@ -88,6 +91,24 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final Controller c = Get.put(Controller());
+  final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
+
+  Future<String> userId;
+  Future<String> userName;
+
+  Future<void> _user(String userId, String userName) async {
+    final SharedPreferences pref = await prefs;
+    // final String userId = pref.getString("user_id");
+    // final String userName = pref.getString("user_name");
+    setState(() {
+      this.userId = pref.setString("user_id", userId).then((value) {
+        return userId;
+      });
+      this.userName = pref.setString("user_name", userName).then((value) {
+        return userName;
+      });
+    });
+  }
 
   String date = "";
 
@@ -140,14 +161,30 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<UserRes> futureUserRes() async {
+    String url = '${API_URL}PosApps/User';
+    print(url);
+    final response =
+        await http.get(Uri.parse(url), headers: {"Accept": "application/json"});
+    if (response.statusCode == 200) {
+      print(response.body);
+      return UserRes.fromMap(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load User');
+    }
+  }
+
   String salesmanSelected = "Pilih Salesman";
   String salesmanFilterSelected = "Pilih Salesman";
   String statusPembayaranSelected = "Pilih Status Pembayaran";
+  String userSelected = "Pilih User";
 
   List<SalesmanData> salesmanData;
   List<String> statusBayar = ["Lunas", "Belum Lunas"];
   List<SalesmanFilterData> salesmanFilterData;
+  List<UserData> userData;
 
+  Map<String, UserData> userDataMap = {};
   Map<String, SalesmanData> salesmanMap = {};
   Map<String, SalesmanFilterData> salesmanFilterMap = {};
 
@@ -461,7 +498,49 @@ class _MyHomePageState extends State<MyHomePage> {
     }).catchError((error) {
       print("ERROR: $error");
     });
+    futureUserRes().then((value) async {
+      if (value != null) {
+        if (value.data.isNotEmpty) {
+          userData = value.data;
+          for (UserData data in value.data) {
+            userDataMap[data.nama] = data;
+          }
+          final SharedPreferences pref = await prefs;
+          final String userId = pref.getString("user_id");
+          final String userName = pref.getString("user_name");
+          if (userId != null && userName != null) {
+            setState(() {
+              this.userId = pref.setString("user_id", userId).then((value) {
+                return userId;
+              });
+              this.userName =
+                  pref.setString("user_name", userName).then((value) {
+                return userName;
+              });
+              userSelected = userName;
+            });
+          } else {
+            setState(() {
+              userSelected = "Pilih User";
+            });
+          }
+        } else {
+          userData = null;
+        }
+      } else {
+        userData = null;
+      }
+    }).catchError((error) {
+      print("ERROR: $error");
+      userData = null;
+    });
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    Loader.hide();
+    super.dispose();
   }
 
   Widget _drawerHeader(String id) {
@@ -530,216 +609,227 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  _showMoreDialog(BuildContext context) {
-    showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(builder: (context, updateState) {
-          return Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            elevation: 16,
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.5,
-              height: MediaQuery.of(context).size.height * 0.6,
-              child: Column(
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(10),
-                        topRight: Radius.circular(10),
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Pilih Data Gudang',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                    ),
-                    child: Align(
-                      alignment: Alignment.center,
-                      child: DropdownSearch<String>(
-                        mode: Mode.MENU,
-                        showSelectedItems: true,
-                        items: items,
-                        dropdownSearchDecoration: InputDecoration(
-                          labelText: "Pilih Gudang",
-                          hintText: "Pilih Gudang",
-                        ),
-                        // popupItemDisabled: (String s) => s.startsWith('I'),
-                        onChanged: (newValue) {
-                          updateState(() {
-                            dropdownvalue = newValue;
-                          });
-                          setState(() {});
-                        },
-                        selectedItem: dropdownvalue,
-                      ),
-                      // DropdownButtonFormField(
-                      //   elevation: 0,
-                      //   decoration: InputDecoration(
-                      //     enabledBorder: OutlineInputBorder(
-                      //       borderSide: BorderSide(
-                      //           color: Colors.grey.shade200, width: 1),
-                      //       borderRadius: BorderRadius.circular(10),
-                      //     ),
-                      //     border: OutlineInputBorder(
-                      //       borderSide: BorderSide(
-                      //           color: Colors.grey.shade200, width: 1),
-                      //       borderRadius: BorderRadius.circular(10),
-                      //     ),
-                      //     filled: true,
-                      //     fillColor: Colors.grey.shade200,
-                      //   ),
-                      //   dropdownColor: Colors.grey.shade200,
-                      //   value: dropdownvalue,
-                      //   onChanged: (String newValue) {
-                      //     setState(() {
-                      //       dropdownvalue = newValue;
-                      //     });
-                      //   },
-                      //   items: items.map((String items) {
-                      //     return DropdownMenuItem(
-                      //       value: items,
-                      //       child: Text(items),
-                      //     );
-                      //   }).toList(),
-                      // ),
-                    ),
-                  ),
-                  Spacer(),
-                  Divider(),
-                  Row(
-                    children: <Widget>[
-                      SizedBox(width: 20),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            primary: Colors.grey.shade300,
-                            shadowColor: Colors.transparent,
-                            onPrimary: Colors.black,
-                          ),
-                          onPressed: () async {
-                            Navigator.of(context).pop();
-                            futureProdukRes().then((value) {
-                              setState(() {
-                                produkData = value.data;
-                                produkDataOriginal = value.data;
-                                isReset = true;
-                              });
-                            });
-                          },
-                          child: Text('OK'),
-                        ),
-                      ),
-                      // SizedBox(width: 20),
-                      // Expanded(
-                      //   child: ElevatedButton(
-                      //     style: ElevatedButton.styleFrom(
-                      //       primary: Colors.blue.shade500,
-                      //       shadowColor: Colors.transparent,
-                      //       onPrimary: Colors.white,
-                      //     ),
-                      //     onPressed: isLoading
-                      //         ? null
-                      //         : () async {
-                      //             updateState(() {
-                      //               isLoading = true;
-                      //             });
-                      //             await futureProdukKategoriRes()
-                      //                 .then((value) async {
-                      //               if (value != null) {
-                      //                 for (ProdukKategoriData produkKategori
-                      //                     in value.data) {
-                      //                   await dbHelper.insertProdukKategori(
-                      //                       produkKategori);
-                      //                 }
-                      //                 await dbHelper
-                      //                     .produkKategoris()
-                      //                     .then((value) {
-                      //                   updateState(() {
-                      //                     produkKategoriData = value;
-                      //                   });
-                      //                 });
-                      //               }
-                      //             }).catchError((error) {
-                      //               print("ERROR: $error");
-                      //             });
-                      //             await futureProdukRes().then((value) async {
-                      //               if (value != null) {
-                      //                 for (ProdukData produk in value.data) {
-                      //                   dbHelper.insertProduk(produk);
-                      //                 }
-                      //                 await dbHelper.produks().then((value) {
-                      //                   updateState(() {
-                      //                     produkData = value;
-                      //                   });
-                      //                   setState(() {});
-                      //                 });
-                      //               }
-                      //             }).catchError((error) {
-                      //               print("ERROR: $error");
-                      //             });
-                      //             updateState(() {
-                      //               isLoading = false;
-                      //             });
-                      //             Navigator.of(context).pop();
-                      //           },
-                      //     child: isLoading
-                      //         ? SizedBox(
-                      //             height: 20,
-                      //             width: 20,
-                      //             child: CircularProgressIndicator(
-                      //               strokeWidth: 2,
-                      //               valueColor: AlwaysStoppedAnimation<Color>(
-                      //                   Colors.white),
-                      //             ),
-                      //           )
-                      //         : Text('Sync'),
-                      //   ),
-                      // ),
-                      SizedBox(width: 20),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                ],
-              ),
-            ),
-          );
-        });
-      },
-    );
-  }
+  // _showMoreDialog(BuildContext context) {
+  //   showDialog(
+  //     barrierDismissible: false,
+  //     context: context,
+  //     builder: (context) {
+  //       return StatefulBuilder(builder: (context, updateState) {
+  //         return Dialog(
+  //           shape:
+  //               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  //           elevation: 16,
+  //           child: SizedBox(
+  //             width: MediaQuery.of(context).size.width * 0.5,
+  //             height: MediaQuery.of(context).size.height * 0.6,
+  //             child: Column(
+  //               children: <Widget>[
+  //                 Container(
+  //                   padding: const EdgeInsets.all(15),
+  //                   decoration: BoxDecoration(
+  //                     color: Colors.blue.shade50,
+  //                     borderRadius: BorderRadius.only(
+  //                       topLeft: Radius.circular(10),
+  //                       topRight: Radius.circular(10),
+  //                     ),
+  //                   ),
+  //                   child: Center(
+  //                     child: Text(
+  //                       'Pilih Data Gudang',
+  //                       textAlign: TextAlign.center,
+  //                       style: TextStyle(
+  //                         fontSize: 16,
+  //                         fontWeight: FontWeight.bold,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //                 const SizedBox(height: 20),
+  //                 Padding(
+  //                   padding: const EdgeInsets.only(
+  //                     left: 20,
+  //                     right: 20,
+  //                   ),
+  //                   child: Align(
+  //                     alignment: Alignment.center,
+  //                     child: DropdownSearch<String>(
+  //                       mode: Mode.MENU,
+  //                       showSelectedItems: true,
+  //                       items: items,
+  //                       dropdownSearchDecoration: InputDecoration(
+  //                         labelText: "Pilih Gudang",
+  //                         hintText: "Pilih Gudang",
+  //                       ),
+  //                       // popupItemDisabled: (String s) => s.startsWith('I'),
+  //                       onChanged: (newValue) {
+  //                         updateState(() {
+  //                           dropdownvalue = newValue;
+  //                         });
+  //                         setState(() {});
+  //                       },
+  //                       selectedItem: dropdownvalue,
+  //                     ),
+  //                     // DropdownButtonFormField(
+  //                     //   elevation: 0,
+  //                     //   decoration: InputDecoration(
+  //                     //     enabledBorder: OutlineInputBorder(
+  //                     //       borderSide: BorderSide(
+  //                     //           color: Colors.grey.shade200, width: 1),
+  //                     //       borderRadius: BorderRadius.circular(10),
+  //                     //     ),
+  //                     //     border: OutlineInputBorder(
+  //                     //       borderSide: BorderSide(
+  //                     //           color: Colors.grey.shade200, width: 1),
+  //                     //       borderRadius: BorderRadius.circular(10),
+  //                     //     ),
+  //                     //     filled: true,
+  //                     //     fillColor: Colors.grey.shade200,
+  //                     //   ),
+  //                     //   dropdownColor: Colors.grey.shade200,
+  //                     //   value: dropdownvalue,
+  //                     //   onChanged: (String newValue) {
+  //                     //     setState(() {
+  //                     //       dropdownvalue = newValue;
+  //                     //     });
+  //                     //   },
+  //                     //   items: items.map((String items) {
+  //                     //     return DropdownMenuItem(
+  //                     //       value: items,
+  //                     //       child: Text(items),
+  //                     //     );
+  //                     //   }).toList(),
+  //                     // ),
+  //                   ),
+  //                 ),
+  //                 Spacer(),
+  //                 Divider(),
+  //                 Row(
+  //                   children: <Widget>[
+  //                     SizedBox(width: 20),
+  //                     Expanded(
+  //                       child: ElevatedButton(
+  //                         style: ElevatedButton.styleFrom(
+  //                           primary: Colors.grey.shade300,
+  //                           shadowColor: Colors.transparent,
+  //                           onPrimary: Colors.black,
+  //                         ),
+  //                         onPressed: () async {
+  //                           Navigator.of(context).pop();
+  //                           futureProdukRes().then((value) {
+  //                             setState(() {
+  //                               produkData = value.data;
+  //                               produkDataOriginal = value.data;
+  //                               isReset = true;
+  //                             });
+  //                           });
+  //                         },
+  //                         child: Text('OK'),
+  //                       ),
+  //                     ),
+  //                     // SizedBox(width: 20),
+  //                     // Expanded(
+  //                     //   child: ElevatedButton(
+  //                     //     style: ElevatedButton.styleFrom(
+  //                     //       primary: Colors.blue.shade500,
+  //                     //       shadowColor: Colors.transparent,
+  //                     //       onPrimary: Colors.white,
+  //                     //     ),
+  //                     //     onPressed: isLoading
+  //                     //         ? null
+  //                     //         : () async {
+  //                     //             updateState(() {
+  //                     //               isLoading = true;
+  //                     //             });
+  //                     //             await futureProdukKategoriRes()
+  //                     //                 .then((value) async {
+  //                     //               if (value != null) {
+  //                     //                 for (ProdukKategoriData produkKategori
+  //                     //                     in value.data) {
+  //                     //                   await dbHelper.insertProdukKategori(
+  //                     //                       produkKategori);
+  //                     //                 }
+  //                     //                 await dbHelper
+  //                     //                     .produkKategoris()
+  //                     //                     .then((value) {
+  //                     //                   updateState(() {
+  //                     //                     produkKategoriData = value;
+  //                     //                   });
+  //                     //                 });
+  //                     //               }
+  //                     //             }).catchError((error) {
+  //                     //               print("ERROR: $error");
+  //                     //             });
+  //                     //             await futureProdukRes().then((value) async {
+  //                     //               if (value != null) {
+  //                     //                 for (ProdukData produk in value.data) {
+  //                     //                   dbHelper.insertProduk(produk);
+  //                     //                 }
+  //                     //                 await dbHelper.produks().then((value) {
+  //                     //                   updateState(() {
+  //                     //                     produkData = value;
+  //                     //                   });
+  //                     //                   setState(() {});
+  //                     //                 });
+  //                     //               }
+  //                     //             }).catchError((error) {
+  //                     //               print("ERROR: $error");
+  //                     //             });
+  //                     //             updateState(() {
+  //                     //               isLoading = false;
+  //                     //             });
+  //                     //             Navigator.of(context).pop();
+  //                     //           },
+  //                     //     child: isLoading
+  //                     //         ? SizedBox(
+  //                     //             height: 20,
+  //                     //             width: 20,
+  //                     //             child: CircularProgressIndicator(
+  //                     //               strokeWidth: 2,
+  //                     //               valueColor: AlwaysStoppedAnimation<Color>(
+  //                     //                   Colors.white),
+  //                     //             ),
+  //                     //           )
+  //                     //         : Text('Sync'),
+  //                     //   ),
+  //                     // ),
+  //                     SizedBox(width: 20),
+  //                   ],
+  //                 ),
+  //                 SizedBox(height: 10),
+  //               ],
+  //             ),
+  //           ),
+  //         );
+  //       });
+  //     },
+  //   );
+  // }
 
   void _refresh() {
     print("MASUK REFRERGHSS");
     setState(() {});
   }
 
-  void _reload() {
+  void _reload() async {
     if (c.isReload) {
-      futureProdukRes().then((value) {
+      if (Loader.isShown) {
+        Loader.hide();
+      }
+      Loader.show(context, progressIndicator: CircularProgressIndicator());
+      // setState(() {
+      //   produkData = null;
+      //   produkDataOriginal = null;
+      //   isReset = true;
+      // });
+      await futureProdukRes().then((value) {
         setState(() {
           produkData = value.data;
           produkDataOriginal = value.data;
           isReset = true;
         });
+        // context.loaderOverlay.hide();
       });
+      Loader.hide();
       c.isReload = false;
     }
   }
@@ -769,11 +859,15 @@ class _MyHomePageState extends State<MyHomePage> {
         body = PenjualanPage(
           produkDatas: produkData == null ? [] : produkData,
           reset: isReset,
+          reload: _reload,
+          bySearch: isBySearch,
+          refresh: _refresh,
         );
         break;
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         elevation: 0,
         title: c.activePage == "penjualan"
@@ -817,6 +911,54 @@ class _MyHomePageState extends State<MyHomePage> {
                         children: [
                           Text(
                             produkKategoriSelected,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 5),
+                          Icon(Icons.arrow_drop_down, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  // Pilih User
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade300,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    padding: EdgeInsets.all(7),
+                    child: InkWell(
+                      onTap: () {
+                        SelectDialog.showModal<String>(
+                          context,
+                          label: "List User",
+                          selectedValue:
+                              userName == null ? "Pilih User" : userSelected,
+                          items: userData == null
+                              ? []
+                              : userData.map((UserData item) {
+                                  return item.nama;
+                                }).toList(),
+                          onChange: (String selected) async {
+                            await _user(userDataMap[selected].id, selected);
+                            userName.then((value) {
+                              setState(() {
+                                userSelected = value;
+                              });
+                            });
+                          },
+                          constraints:
+                              BoxConstraints(maxHeight: 400, maxWidth: 400),
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            userName == null ? "Pilih User" : userSelected,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -1381,6 +1523,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   c.setSalesman("");
                   c.setPelanggan("");
                   c.setStatusBayar("");
+                  isBySearch = false;
                 });
               },
               selected: c.activePage == "penjualan",
@@ -1399,6 +1542,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   c.setSalesman("");
                   c.setPelanggan("");
                   c.setStatusBayar("");
+                  isBySearch = false;
                 });
               },
               selected: c.activePage == "transaksi",
