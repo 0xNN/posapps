@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
 import 'package:posapps/models/invoice.dart';
 import 'package:http/http.dart' as http;
+import 'package:posapps/models/invoice_cancel.dart';
 import 'package:posapps/models/invoice_delete.dart';
 import 'package:posapps/models/send_wa.dart';
 import 'package:posapps/resources/string.dart';
@@ -57,7 +59,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
       // "StatusLunas": "",
       "StatusBayar": c.statusBayar.value.toString(),
       "SalesmanId": c.salesmanId.value.toString(),
-      "TglInvoice": c.tanggal.value.toString(),
+      "TglInvoiceAwal": c.tanggal.value.toString(),
+      "TglInvoiceAkhir": c.tanggalTo.value.toString(),
     };
     print(body.toString());
     url = url + '?' + Uri(queryParameters: body).query;
@@ -90,6 +93,26 @@ class _TransaksiPageState extends State<TransaksiPage> {
       return InvoiceDeleteRes.fromMap(jsonDecode(response.body));
     } else {
       throw Exception('Failed to delete invoice');
+    }
+  }
+
+  Future<InvoiceCancelRes> futureInvoiceCancel(String invoiceId) async {
+    String url = '${API_URL}PosApps/InvoiceCancel';
+    print(url);
+    Map<String, dynamic> body = {
+      "InvoiceId": invoiceId,
+    };
+    print(body.toString());
+    url = url + '?' + Uri(queryParameters: body).query;
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {"Accept": "application/json"},
+    );
+    if (response.statusCode == 200) {
+      print(response.body);
+      return InvoiceCancelRes.fromMap(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to cancel invoice');
     }
   }
 
@@ -858,144 +881,179 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                             // send to whatsapp
                                             // if (invoiceDataSelected.status ==
                                             //     "DRAFT")
-                                            GestureDetector(
-                                              onTap: () {
-                                                showDialog(
-                                                    context: context,
-                                                    builder:
-                                                        (BuildContext context) {
-                                                      return AlertDialog(
-                                                        scrollable: true,
-                                                        title: Text(
-                                                            "Konfirmasi Whatsapp"),
-                                                        // content: Text(
-                                                        //     "Apakah anda yakin ingin mengirim invoice ini?"),
-                                                        // Input no Whatsapp
-                                                        content: SizedBox(
-                                                          height: 100,
-                                                          child: Column(
-                                                            children: [
-                                                              TextFormField(
-                                                                controller:
-                                                                    _noWaController,
-                                                                keyboardType:
-                                                                    TextInputType
-                                                                        .number,
-                                                                decoration:
-                                                                    InputDecoration(
-                                                                  hintText:
-                                                                      "No Whatsapp",
-                                                                  border:
-                                                                      OutlineInputBorder(),
-                                                                ),
+                                            Material(
+                                              child: InkWell(
+                                                onTap: () {
+                                                  showDialog(
+                                                      barrierDismissible: false,
+                                                      context: context,
+                                                      builder: (BuildContext
+                                                          context) {
+                                                        return WillPopScope(
+                                                          onWillPop: () async =>
+                                                              false,
+                                                          child: AlertDialog(
+                                                            scrollable: true,
+                                                            title: Text(
+                                                                "Konfirmasi Whatsapp"),
+                                                            // content: Text(
+                                                            //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                                            // Input no Whatsapp
+                                                            content: SizedBox(
+                                                              height: 100,
+                                                              child: Column(
+                                                                children: [
+                                                                  TextFormField(
+                                                                    controller:
+                                                                        _noWaController,
+                                                                    keyboardType:
+                                                                        TextInputType
+                                                                            .number,
+                                                                    decoration:
+                                                                        InputDecoration(
+                                                                      hintText:
+                                                                          "No Whatsapp",
+                                                                      border:
+                                                                          OutlineInputBorder(),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () {
+                                                                  Navigator.pop(
+                                                                      context);
+                                                                },
+                                                                child: Text(
+                                                                    "Batal"),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed:
+                                                                    () async {
+                                                                  // Navigator.pop(
+                                                                  //     context);
+                                                                  await EasyLoading
+                                                                      .show(
+                                                                    status:
+                                                                        'loading...',
+                                                                    maskType:
+                                                                        EasyLoadingMaskType
+                                                                            .black,
+                                                                    dismissOnTap:
+                                                                        false,
+                                                                  );
+                                                                  await futureSendWa(
+                                                                          invoiceDataSelected
+                                                                              .id)
+                                                                      .then(
+                                                                          (value) {
+                                                                    if (value
+                                                                        .success) {
+                                                                      ScaffoldMessenger.of(
+                                                                              context)
+                                                                          .showSnackBar(
+                                                                              SnackBar(
+                                                                        content:
+                                                                            Text("Invoice berhasil dikirim"),
+                                                                        backgroundColor:
+                                                                            Colors.green,
+                                                                      ));
+                                                                    } else {
+                                                                      ScaffoldMessenger.of(
+                                                                              context)
+                                                                          .showSnackBar(
+                                                                              SnackBar(
+                                                                        content:
+                                                                            Text("Invoice gagal dikirim"),
+                                                                        backgroundColor:
+                                                                            Colors.red,
+                                                                      ));
+                                                                    }
+                                                                    if (EasyLoading
+                                                                        .isShow) {
+                                                                      EasyLoading
+                                                                          .dismiss();
+                                                                    }
+                                                                    Navigator.pop(
+                                                                        context);
+                                                                  }).onError((error,
+                                                                          stackTrace) {
+                                                                    print(
+                                                                        error);
+                                                                    print(
+                                                                        stackTrace);
+                                                                    ScaffoldMessenger.of(
+                                                                            context)
+                                                                        .showSnackBar(
+                                                                            SnackBar(
+                                                                      content: Text(
+                                                                          "Invoice gagal dikirim"),
+                                                                      backgroundColor:
+                                                                          Colors
+                                                                              .red,
+                                                                    ));
+                                                                    if (EasyLoading
+                                                                        .isShow) {
+                                                                      EasyLoading
+                                                                          .dismiss();
+                                                                    }
+                                                                    Navigator.pop(
+                                                                        context);
+                                                                  });
+                                                                  if (EasyLoading
+                                                                      .isShow) {
+                                                                    await EasyLoading
+                                                                        .dismiss();
+                                                                  }
+                                                                },
+                                                                child: Text(
+                                                                    "Kirim"),
                                                               ),
                                                             ],
                                                           ),
-                                                        ),
-                                                        actions: [
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              Navigator.pop(
-                                                                  context);
-                                                            },
-                                                            child:
-                                                                Text("Batal"),
-                                                          ),
-                                                          TextButton(
-                                                            onPressed: () {
-                                                              futureSendWa(
-                                                                      invoiceDataSelected
-                                                                          .id)
-                                                                  .then(
-                                                                      (value) {
-                                                                if (value
-                                                                    .success) {
-                                                                  ScaffoldMessenger.of(
-                                                                          context)
-                                                                      .showSnackBar(
-                                                                          SnackBar(
-                                                                    content: Text(
-                                                                        "Invoice berhasil dikirim"),
-                                                                    backgroundColor:
-                                                                        Colors
-                                                                            .green,
-                                                                  ));
-                                                                } else {
-                                                                  ScaffoldMessenger.of(
-                                                                          context)
-                                                                      .showSnackBar(
-                                                                          SnackBar(
-                                                                    content: Text(
-                                                                        "Invoice gagal dikirim"),
-                                                                    backgroundColor:
-                                                                        Colors
-                                                                            .red,
-                                                                  ));
-                                                                }
-                                                                Navigator.pop(
-                                                                    context);
-                                                              }).onError((error,
-                                                                      stackTrace) {
-                                                                print(error);
-                                                                print(
-                                                                    stackTrace);
-                                                                ScaffoldMessenger.of(
-                                                                        context)
-                                                                    .showSnackBar(
-                                                                        SnackBar(
-                                                                  content: Text(
-                                                                      "Invoice gagal dikirim"),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                ));
-                                                                Navigator.pop(
-                                                                    context);
-                                                              });
-                                                            },
-                                                            child:
-                                                                Text("Kirim"),
-                                                          ),
-                                                        ],
-                                                      );
-                                                    });
-                                              },
-                                              child: Container(
-                                                height: 20,
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(5),
-                                                  color: Colors.green[600]
-                                                      .withOpacity(.8),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.green
-                                                          .withOpacity(0.5),
-                                                      spreadRadius: 2,
-                                                      blurRadius: 2,
-                                                      offset: Offset(0, 1),
-                                                    ),
-                                                  ],
-                                                ),
-                                                padding: EdgeInsets.symmetric(
-                                                  horizontal: 5,
-                                                  vertical: 2,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Text(
-                                                      "Share to: ",
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 14,
+                                                        );
+                                                      });
+                                                },
+                                                child: Container(
+                                                  height: 20,
+                                                  decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    color: Colors.green[600]
+                                                        .withOpacity(.8),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.green
+                                                            .withOpacity(0.5),
+                                                        spreadRadius: 2,
+                                                        blurRadius: 2,
+                                                        offset: Offset(0, 1),
                                                       ),
-                                                    ),
-                                                    Image.asset(
-                                                      'images/whatsapp.png',
-                                                    ),
-                                                  ],
+                                                    ],
+                                                  ),
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 5,
+                                                    vertical: 2,
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Text(
+                                                        "Share to: ",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                      Image.asset(
+                                                        'images/whatsapp.png',
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -1136,7 +1194,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                             5),
                                                   ),
                                                 ),
-                                                child: Text('Edit'),
+                                                child: Text('EDIT'),
                                               ),
                                               SizedBox(
                                                 width: 5,
@@ -1310,15 +1368,192 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                             5),
                                                   ),
                                                 ),
-                                                child: Text('Delete'),
+                                                child: Text('DELETE'),
                                               ),
                                             ],
                                           ),
-                                        if (invoiceDataSelected.status !=
-                                            'DRAFT')
-                                          SizedBox(
-                                            height: 10,
+                                        if (invoiceDataSelected.status ==
+                                                'PUBLISHED' &&
+                                            invoiceDataSelected.isSinkron ==
+                                                '0')
+                                          Row(
+                                            children: [
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  showDialog(
+                                                      context: context,
+                                                      builder: (BuildContext
+                                                          context) {
+                                                        return AlertDialog(
+                                                          scrollable: true,
+                                                          title: Text(
+                                                              "Konfirmasi"),
+                                                          content: Text(
+                                                              "Apakah anda yakin ingin membatalkan invoice ini?"),
+                                                          actions: [
+                                                            TextButton(
+                                                              child:
+                                                                  Text("Batal"),
+                                                              onPressed: () {
+                                                                Navigator.pop(
+                                                                    context);
+                                                              },
+                                                            ),
+                                                            TextButton(
+                                                              child: Text("Ya"),
+                                                              onPressed: () {
+                                                                futureInvoiceCancel(
+                                                                        invoiceDataSelected
+                                                                            .id)
+                                                                    .then(
+                                                                        (value) async {
+                                                                  if (value
+                                                                      .success) {
+                                                                    setState(
+                                                                        () {
+                                                                      invoiceData =
+                                                                          [];
+                                                                      invoiceDataFiltered =
+                                                                          [];
+                                                                      summary =
+                                                                          null;
+                                                                      invoiceDataSelected =
+                                                                          null;
+                                                                    });
+                                                                    Navigator.pop(
+                                                                        context);
+                                                                    ScaffoldMessenger.of(
+                                                                            context)
+                                                                        .showSnackBar(
+                                                                      SnackBar(
+                                                                        content:
+                                                                            Text(
+                                                                          value
+                                                                              .message,
+                                                                          style:
+                                                                              TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                    await futureInvoice().then(
+                                                                        (value) {
+                                                                      if (value
+                                                                          .success) {
+                                                                        if (value.data ==
+                                                                            null) {
+                                                                          setState(
+                                                                              () {
+                                                                            invoiceData =
+                                                                                [];
+                                                                            invoiceDataFiltered =
+                                                                                [];
+                                                                            summary =
+                                                                                null;
+                                                                          });
+                                                                        } else {
+                                                                          setState(
+                                                                              () {
+                                                                            invoiceData =
+                                                                                value.data.listInvoice;
+                                                                            invoiceDataFiltered =
+                                                                                invoiceData;
+                                                                            summary =
+                                                                                value.data.summary;
+                                                                          });
+                                                                        }
+                                                                      } else {
+                                                                        ScaffoldMessenger.of(context)
+                                                                            .showSnackBar(
+                                                                          SnackBar(
+                                                                            content:
+                                                                                Text(value.message),
+                                                                          ),
+                                                                        );
+                                                                      }
+                                                                    }).onError(
+                                                                        (onError,
+                                                                            stackTrace) {
+                                                                      print(
+                                                                          "ERRRORRRRRR");
+                                                                      print(onError
+                                                                          .toString());
+                                                                      print(
+                                                                          stackTrace);
+                                                                      ScaffoldMessenger.of(
+                                                                              context)
+                                                                          .showSnackBar(
+                                                                        SnackBar(
+                                                                          content:
+                                                                              Text(onError.toString()),
+                                                                        ),
+                                                                      );
+                                                                    });
+                                                                  } else {
+                                                                    ScaffoldMessenger.of(
+                                                                            context)
+                                                                        .showSnackBar(
+                                                                      SnackBar(
+                                                                        content:
+                                                                            Text(
+                                                                          value
+                                                                              .message,
+                                                                          style:
+                                                                              TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  }
+                                                                }).catchError(
+                                                                        (onError) {
+                                                                  print(
+                                                                      "ERRRORRRR");
+                                                                  print(onError
+                                                                      .toString());
+                                                                  ScaffoldMessenger.of(
+                                                                          context)
+                                                                      .showSnackBar(
+                                                                    SnackBar(
+                                                                      content:
+                                                                          Text(
+                                                                        onError
+                                                                            .toString(),
+                                                                        style:
+                                                                            TextStyle(
+                                                                          color:
+                                                                              Colors.white,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                                });
+                                                              },
+                                                            ),
+                                                          ],
+                                                        );
+                                                      });
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  primary: Colors.orange,
+                                                  elevation: 0,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                  ),
+                                                ),
+                                                child: Text('CANCEL'),
+                                              ),
+                                            ],
                                           ),
+                                        SizedBox(
+                                          height: 10,
+                                        ),
                                       ],
                                     ),
                                   )

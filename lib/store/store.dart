@@ -10,9 +10,11 @@ class Controller extends GetxController {
   var salesman = ''.obs;
   var pelanggan = ''.obs;
   var tanggal = ''.obs;
+  var tanggalTo = ''.obs;
   var statusBayar = ''.obs;
   var salesmanId = ''.obs;
   bool isReload = false;
+  bool isReloadProduk = false;
 
   increment() => count++;
 
@@ -61,8 +63,18 @@ class Controller extends GetxController {
     update();
   }
 
+  setReloadProduk(bool isReloadProduk) {
+    this.isReloadProduk = isReloadProduk;
+    update();
+  }
+
   setTanggal(tanggal) {
     this.tanggal.value = tanggal;
+    update();
+  }
+
+  setTanggalTo(tanggalTo) {
+    this.tanggalTo.value = tanggalTo;
     update();
   }
 }

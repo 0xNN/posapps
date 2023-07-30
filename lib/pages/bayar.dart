@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
 import 'package:posapps/models/invoice_save.dart';
 import 'package:posapps/models/metode_bayar.dart';
@@ -113,7 +114,9 @@ class _BayarPageState extends State<BayarPage> {
           ? "0"
           : _textPembulatanController.text.replaceAll(".", ""),
       "PPN": ppn.toString(),
-      "NominalBayar": _textPembayaranController.text.replaceAll(".", ""),
+      "NominalBayar": _textPembayaranController.text.isEmpty
+          ? "0"
+          : _textPembayaranController.text.replaceAll(".", ""),
       "RekeningId": metodeBayarSelectedMap[metodeBayarSelected].id,
       // "IsStatusInvoice": isPublish ? "PUBLISHED" : "DRAFT",
       "IsStatusInvoice": isDraft ? "DRAFT" : "PUBLISHED",
@@ -200,14 +203,16 @@ class _BayarPageState extends State<BayarPage> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        appBar: AppBar(
-          elevation: 0,
-          title: Text('Kembali'),
-        ),
+        // appBar: AppBar(
+        //   elevation: 0,
+        //   title: Text('Kembali'),
+        // ),
         body: ListView(
           children: <Widget>[
             SizedBox(height: 10),
             Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -581,362 +586,373 @@ class _BayarPageState extends State<BayarPage> {
                           ),
                         ),
                       ),
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: Container(
-                          padding: EdgeInsets.only(left: 10, right: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.15,
-                                child: Text(
-                                  'PPN',
+                    ],
+                  ),
+                ),
+                Expanded(
+                    child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Container(
+                        padding: EdgeInsets.only(left: 10, right: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.15,
+                              child: Text(
+                                'PPN',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                // Lunas atau belum
+                                Checkbox(
+                                  value: isPpn,
+                                  onChanged: (bool value) {
+                                    setState(() {
+                                      isPpn = value;
+                                      if (value == true) {
+                                        ppn =
+                                            (0.11 * totalSetelahDiskon).round();
+                                      } else {
+                                        ppn = 0;
+                                      }
+                                      if (isLunas) {
+                                        _textPembayaranController
+                                            .text = ((totalHarga -
+                                                    (_textDiskonController
+                                                            .text.isEmpty
+                                                        ? 0
+                                                        : int.parse(
+                                                            _textDiskonController
+                                                                .text
+                                                                .replaceAll(
+                                                                    ".", ""))) -
+                                                    (_textPembulatanController
+                                                            .text.isEmpty
+                                                        ? 0
+                                                        : int.parse(
+                                                            _textPembulatanController
+                                                                .text
+                                                                .replaceAll(".",
+                                                                    "")))) +
+                                                ppn)
+                                            .toString();
+                                      }
+                                    });
+                                  },
+                                  activeColor: Colors.green,
+                                  visualDensity: VisualDensity(
+                                      horizontal: -4, vertical: -4),
+                                ),
+                                SizedBox(width: 5),
+                                Text(
+                                  CurrencyFormat.convertToIdr(ppn, 0),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
+                                    color: Colors.blue,
                                   ),
                                 ),
+                              ],
+                            ),
+                            // Text(
+                            //   CurrencyFormat.convertToIdr(ppn, 0),
+                            //   style: TextStyle(
+                            //     fontSize: 18,
+                            //     fontWeight: FontWeight.bold,
+                            //     color: Colors.blue,
+                            //   ),
+                            // ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Container(
+                        padding: EdgeInsets.only(left: 10, right: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.15,
+                              child: Text(
+                                'Grand Total',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                ),
                               ),
-                              Row(
-                                children: [
-                                  // Lunas atau belum
-                                  Checkbox(
-                                    value: isPpn,
-                                    onChanged: (bool value) {
-                                      setState(() {
-                                        isPpn = value;
-                                        if (value == true) {
-                                          ppn = (0.11 * totalSetelahDiskon)
-                                              .round();
-                                        } else {
-                                          ppn = 0;
-                                        }
-                                        if (isLunas) {
-                                          _textPembayaranController
-                                              .text = ((totalHarga -
-                                                      (_textDiskonController
-                                                              .text.isEmpty
-                                                          ? 0
-                                                          : int.parse(
-                                                              _textDiskonController
-                                                                  .text
-                                                                  .replaceAll(
-                                                                      ".",
-                                                                      ""))) -
-                                                      (_textPembulatanController
-                                                              .text.isEmpty
-                                                          ? 0
-                                                          : int.parse(
-                                                              _textPembulatanController
-                                                                  .text
-                                                                  .replaceAll(
-                                                                      ".",
-                                                                      "")))) +
-                                                  ppn)
-                                              .toString();
-                                        }
-                                      });
-                                    },
-                                    activeColor: Colors.green,
-                                    visualDensity: VisualDensity(
-                                        horizontal: -4, vertical: -4),
-                                  ),
-                                  SizedBox(width: 5),
-                                  Text(
-                                    CurrencyFormat.convertToIdr(ppn, 0),
+                            ),
+                            isPpn
+                                ? Text(
+                                    CurrencyFormat.convertToIdr(
+                                        (totalHarga -
+                                                (_textDiskonController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textDiskonController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", ""))) -
+                                                (_textPembulatanController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textPembulatanController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", "")))) +
+                                            ppn,
+                                        0),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  )
+                                : Text(
+                                    CurrencyFormat.convertToIdr(
+                                        (totalHarga -
+                                            (_textDiskonController.text.isEmpty
+                                                ? 0
+                                                : int.parse(
+                                                    _textDiskonController.text
+                                                        .replaceAll(".", ""))) -
+                                            (_textPembulatanController
+                                                    .text.isEmpty
+                                                ? 0
+                                                : int.parse(
+                                                    _textPembulatanController
+                                                        .text
+                                                        .replaceAll(".", "")))),
+                                        0),
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.blue,
                                     ),
                                   ),
-                                ],
-                              ),
-                              // Text(
-                              //   CurrencyFormat.convertToIdr(ppn, 0),
-                              //   style: TextStyle(
-                              //     fontSize: 18,
-                              //     fontWeight: FontWeight.bold,
-                              //     color: Colors.blue,
-                              //   ),
-                              // ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: Container(
-                          padding: EdgeInsets.only(left: 10, right: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.15,
-                                child: Text(
-                                  'Grand Total',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                              isPpn
-                                  ? Text(
-                                      CurrencyFormat.convertToIdr(
-                                          (totalHarga -
-                                                  (_textDiskonController
-                                                          .text.isEmpty
-                                                      ? 0
-                                                      : int.parse(
-                                                          _textDiskonController
-                                                              .text
-                                                              .replaceAll(
-                                                                  ".", ""))) -
-                                                  (_textPembulatanController
-                                                          .text.isEmpty
-                                                      ? 0
-                                                      : int.parse(
-                                                          _textPembulatanController
-                                                              .text
-                                                              .replaceAll(
-                                                                  ".", "")))) +
-                                              ppn,
-                                          0),
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue,
-                                      ),
-                                    )
-                                  : Text(
-                                      CurrencyFormat.convertToIdr(
-                                          (totalHarga -
-                                              (_textDiskonController
-                                                      .text.isEmpty
-                                                  ? 0
-                                                  : int.parse(
-                                                      _textDiskonController.text
-                                                          .replaceAll(
-                                                              ".", ""))) -
-                                              (_textPembulatanController
-                                                      .text.isEmpty
-                                                  ? 0
-                                                  : int.parse(
-                                                      _textPembulatanController
-                                                          .text
-                                                          .replaceAll(
-                                                              ".", "")))),
-                                          0),
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 5),
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: Container(
-                          padding: EdgeInsets.only(left: 10, right: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.15,
-                                child: Text(
-                                  'Pembayaran',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _textPembayaranController,
-                                  decoration: InputDecoration(
-                                    // labelText: "Pembayaran",
-                                    border: OutlineInputBorder(),
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.all(6),
-                                    hintText: 'Pembayaran',
-                                  ),
-                                  inputFormatters: [
-                                    MoneyInputFormatter(
-                                      mantissaLength: 0,
-                                      thousandSeparator:
-                                          ThousandSeparator.Period,
-                                    ),
-                                  ],
-                                  keyboardType: TextInputType.number,
-                                  onChanged: (value) {},
-                                  enabled: !isLunas,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: Container(
-                          padding: EdgeInsets.only(left: 10, right: 10),
-                          child: Row(
-                            children: [
-                              // Lunas atau belum
-                              Checkbox(
-                                value: isLunas,
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    isLunas = value;
-                                    if (isLunas) {
-                                      if (isPpn) {
-                                        ppn =
-                                            (0.11 * totalSetelahDiskon).round();
-                                      } else {
-                                        ppn = 0;
-                                      }
-                                      _textPembayaranController
-                                          .text = ((totalHarga -
-                                                  (_textDiskonController
-                                                          .text.isEmpty
-                                                      ? 0
-                                                      : int.parse(
-                                                          _textDiskonController
-                                                              .text
-                                                              .replaceAll(
-                                                                  ".", ""))) -
-                                                  (_textPembulatanController
-                                                          .text.isEmpty
-                                                      ? 0
-                                                      : int.parse(
-                                                          _textPembulatanController
-                                                              .text
-                                                              .replaceAll(
-                                                                  ".", "")))) +
-                                              ppn)
-                                          .toString()
-                                          .toCurrencyString(
-                                            thousandSeparator:
-                                                ThousandSeparator.Period,
-                                            mantissaLength: 0,
-                                          );
-                                    } else {
-                                      _textPembayaranController.text = "";
-                                    }
-                                  });
-                                },
-                                visualDensity:
-                                    VisualDensity(horizontal: -4, vertical: -4),
-                              ),
-                              SizedBox(width: 5),
-                              Text(
-                                'Lunas',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: metodeBayar.isNotEmpty
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    SizedBox(height: 5),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Container(
+                        padding: EdgeInsets.only(left: 10, right: 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16),
+                            SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.15,
                               child: Text(
-                                "Pilih Metode Pembayaran",
+                                'Pembayaran',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: Colors.grey,
                                   fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
                                 ),
                               ),
                             ),
-                            SizedBox(height: 10),
-                            SizedBox(
-                              height: MediaQuery.of(context).size.height * 0.4,
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: AlignedGridView.count(
-                                  crossAxisCount: 2,
-                                  mainAxisSpacing: 4.0,
-                                  crossAxisSpacing: 4.0,
-                                  itemCount: metodeBayar.length,
-                                  itemBuilder: (context, index) {
-                                    return InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          metodeBayarSelected =
-                                              metodeBayar[index].alias;
-                                        });
-                                      },
-                                      child: Container(
-                                        padding: EdgeInsets.all(5),
-                                        decoration: BoxDecoration(
-                                          color: metodeBayarSelected ==
-                                                  metodeBayar[index].alias
-                                              ? Colors.blue.withOpacity(0.6)
-                                              : Colors.grey[200],
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.payment,
-                                              size: 16,
-                                              color: metodeBayarSelected ==
-                                                      metodeBayar[index].alias
-                                                  ? Colors.white
-                                                  : Colors.grey.shade600,
-                                            ),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              metodeBayar[index].alias,
-                                              overflow: TextOverflow.ellipsis,
-                                              softWrap: true,
-                                              maxLines: 1,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: metodeBayarSelected ==
-                                                        metodeBayar[index].alias
-                                                    ? Colors.white
-                                                    : Colors.grey.shade600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
+                            Expanded(
+                              child: TextFormField(
+                                controller: _textPembayaranController,
+                                decoration: InputDecoration(
+                                  // labelText: "Pembayaran",
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.all(6),
+                                  hintText: 'Pembayaran',
                                 ),
+                                inputFormatters: [
+                                  MoneyInputFormatter(
+                                    mantissaLength: 0,
+                                    thousandSeparator: ThousandSeparator.Period,
+                                  ),
+                                ],
+                                keyboardType: TextInputType.number,
+                                onChanged: (value) {},
+                                enabled: !isLunas,
                               ),
                             ),
                           ],
-                        )
-                      : SizedBox(),
-                ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: Container(
+                        padding: EdgeInsets.only(left: 10, right: 10),
+                        child: Row(
+                          children: [
+                            // Lunas atau belum
+                            Checkbox(
+                              value: isLunas,
+                              onChanged: (bool value) {
+                                setState(() {
+                                  isLunas = value;
+                                  if (isLunas) {
+                                    if (isPpn) {
+                                      ppn = (0.11 * totalSetelahDiskon).round();
+                                    } else {
+                                      ppn = 0;
+                                    }
+                                    _textPembayaranController
+                                        .text = ((totalHarga -
+                                                (_textDiskonController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textDiskonController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", ""))) -
+                                                (_textPembulatanController
+                                                        .text.isEmpty
+                                                    ? 0
+                                                    : int.parse(
+                                                        _textPembulatanController
+                                                            .text
+                                                            .replaceAll(
+                                                                ".", "")))) +
+                                            ppn)
+                                        .toString()
+                                        .toCurrencyString(
+                                          thousandSeparator:
+                                              ThousandSeparator.Period,
+                                          mantissaLength: 0,
+                                        );
+                                  } else {
+                                    _textPembayaranController.text = "";
+                                  }
+                                });
+                              },
+                              visualDensity:
+                                  VisualDensity(horizontal: -4, vertical: -4),
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Lunas',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )),
               ],
             ),
+            Divider(),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                "Pilih Metode Pembayaran",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            metodeBayar.isNotEmpty
+                ? AnimatedContainer(
+                    duration: Duration(milliseconds: 1000),
+                    curve: Curves.easeIn,
+                    height: MediaQuery.of(context).size.height * 0.16,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: AlignedGridView.count(
+                        crossAxisCount: 4,
+                        mainAxisSpacing: 8.0,
+                        crossAxisSpacing: 8.0,
+                        itemCount: metodeBayar.length,
+                        itemBuilder: (context, index) {
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                metodeBayarSelected = metodeBayar[index].alias;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: Duration(milliseconds: 300),
+                              height: 50,
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: metodeBayarSelected ==
+                                        metodeBayar[index].alias
+                                    ? Colors.blue.withOpacity(0.6)
+                                    : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    blurRadius: 1,
+                                    offset: Offset(
+                                        0, 1), // changes position of shadow
+                                  ),
+                                ],
+                                image: DecorationImage(
+                                  image:
+                                      Image.asset('images/metode2.png').image,
+                                  fit: BoxFit.contain,
+                                  opacity: 0.2,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.payment,
+                                    size: 16,
+                                    color: metodeBayarSelected ==
+                                            metodeBayar[index].alias
+                                        ? Colors.white
+                                        : Colors.blue.shade600,
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    metodeBayar[index].alias,
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: true,
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: metodeBayarSelected ==
+                                              metodeBayar[index].alias
+                                          ? Colors.white
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  )
+                : SizedBox(),
+            Divider(),
             // Spacer(),
             SizedBox(
               width: MediaQuery.of(context).size.width,
@@ -956,27 +972,26 @@ class _BayarPageState extends State<BayarPage> {
                           ),
                         ),
                         onPressed: () async {
-                          if (_textPembayaranController.text.isEmpty ||
-                              _textPembayaranController.text == "0") {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: SizedBox(
-                                  height: 50,
-                                  child: Center(
-                                    child: Text(
-                                      "Pembayaran tidak boleh kosong atau 0",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            return;
-                          }
+                          // if (_textPembayaranController.text.isEmpty) {
+                          //   ScaffoldMessenger.of(context).showSnackBar(
+                          //     SnackBar(
+                          //       content: SizedBox(
+                          //         height: 50,
+                          //         child: Center(
+                          //           child: Text(
+                          //             "Pembayaran tidak boleh kosong",
+                          //             style: TextStyle(
+                          //               fontSize: 16,
+                          //               fontWeight: FontWeight.bold,
+                          //             ),
+                          //           ),
+                          //         ),
+                          //       ),
+                          //       duration: Duration(seconds: 2),
+                          //     ),
+                          //   );
+                          //   return;
+                          // }
                           if (metodeBayarSelected == "") {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -1021,81 +1036,95 @@ class _BayarPageState extends State<BayarPage> {
                                 c.setSalesman("");
                                 c.setPelanggan("");
                                 c.setStatusBayar("");
+                                c.setReload(true);
 
                                 showDialog(
+                                    barrierDismissible: false,
                                     context: context,
                                     builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        scrollable: true,
-                                        title: Text("Konfirmasi Whatsapp"),
-                                        // content: Text(
-                                        //     "Apakah anda yakin ingin mengirim invoice ini?"),
-                                        // Input no Whatsapp
-                                        content: SizedBox(
-                                          height: 100,
-                                          child: Column(
-                                            children: [
-                                              TextFormField(
-                                                controller: _noWaController,
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                decoration: InputDecoration(
-                                                  hintText: "No Whatsapp",
-                                                  border: OutlineInputBorder(),
+                                      return WillPopScope(
+                                        onWillPop: () async => false,
+                                        child: AlertDialog(
+                                          scrollable: true,
+                                          title: Text("Konfirmasi Whatsapp"),
+                                          // content: Text(
+                                          //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                          // Input no Whatsapp
+                                          content: SizedBox(
+                                            height: 100,
+                                            child: Column(
+                                              children: [
+                                                TextFormField(
+                                                  controller: _noWaController,
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  decoration: InputDecoration(
+                                                    hintText: "No Whatsapp",
+                                                    border:
+                                                        OutlineInputBorder(),
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              c.setActiveBayar(false);
-                                              Navigator.pop(
-                                                  context, 'redirect');
-                                            },
-                                            child: Text("Batal"),
-                                          ),
-                                          TextButton(
-                                            onPressed: () async {
-                                              await futureSendWa(
-                                                      value.data.invoiceId)
-                                                  .then((value) {
-                                                if (value.success) {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(SnackBar(
-                                                    content: Text(
-                                                        "Invoice berhasil dikirim"),
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                  ));
-                                                } else {
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                c.setActiveBayar(false);
+                                                c.cancelEdit();
+                                                c.setSalesman("");
+                                                c.setPelanggan("");
+                                                c.setStatusBayar("");
+                                                Navigator.pop(
+                                                    context, 'redirect');
+                                              },
+                                              child: Text("Batal"),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                await futureSendWa(
+                                                        value.data.invoiceId)
+                                                    .then((value) {
+                                                  if (value.success) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(SnackBar(
+                                                      content: Text(
+                                                          "Invoice berhasil dikirim"),
+                                                      backgroundColor:
+                                                          Colors.green,
+                                                    ));
+                                                  } else {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(SnackBar(
+                                                      content: Text(
+                                                          "Invoice gagal dikirim"),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ));
+                                                  }
+                                                  Navigator.pop(context);
+                                                }).onError((error, stackTrace) {
+                                                  print(error);
+                                                  print(stackTrace);
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(SnackBar(
                                                     content: Text(
                                                         "Invoice gagal dikirim"),
                                                     backgroundColor: Colors.red,
                                                   ));
-                                                }
-                                                Navigator.pop(context);
-                                              }).onError((error, stackTrace) {
-                                                print(error);
-                                                print(stackTrace);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(SnackBar(
-                                                  content: Text(
-                                                      "Invoice gagal dikirim"),
-                                                  backgroundColor: Colors.red,
-                                                ));
-                                                Navigator.pop(context);
-                                              });
-                                              c.setActiveBayar(false);
-                                              Navigator.pop(context, 'success');
-                                            },
-                                            child: Text("Kirim"),
-                                          ),
-                                        ],
+                                                  Navigator.pop(context);
+                                                });
+                                                c.setActiveBayar(false);
+                                                Navigator.pop(
+                                                    context, 'success');
+                                              },
+                                              child: Text("Kirim"),
+                                            ),
+                                          ],
+                                        ),
                                       );
                                     });
                               } else {
@@ -1137,12 +1166,43 @@ class _BayarPageState extends State<BayarPage> {
                       ),
                     ),
                     SizedBox(width: 5),
+                  ],
+                ),
+              ),
+            ),
+            // Tombol Back & Cancel
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          primary: Colors.red,
+                          elevation: 0,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 2,
+                            vertical: 2,
+                          ),
+                        ),
+                        onPressed: () {
+                          c.setActiveBayar(false);
+                          Navigator.pop(context);
+                        },
+                        icon: Icon(Icons.arrow_back),
+                        label: Text('BACK'),
+                      ),
+                    ),
+                    SizedBox(width: 5),
                     // Button Draft
                     Expanded(
                       flex: 1,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          primary: Colors.grey.shade600,
+                          primary: Colors.orange.shade600,
                           elevation: 0,
                           padding: EdgeInsets.symmetric(
                             horizontal: 2,
@@ -1150,27 +1210,26 @@ class _BayarPageState extends State<BayarPage> {
                           ),
                         ),
                         onPressed: () async {
-                          if (_textPembayaranController.text.isEmpty ||
-                              _textPembayaranController.text == "0") {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: SizedBox(
-                                  height: 50,
-                                  child: Center(
-                                    child: Text(
-                                      "Pembayaran tidak boleh kosong atau 0",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            return;
-                          }
+                          // if (_textPembayaranController.text.isEmpty) {
+                          //   ScaffoldMessenger.of(context).showSnackBar(
+                          //     SnackBar(
+                          //       content: SizedBox(
+                          //         height: 50,
+                          //         child: Center(
+                          //           child: Text(
+                          //             "Pembayaran tidak boleh kosong",
+                          //             style: TextStyle(
+                          //               fontSize: 16,
+                          //               fontWeight: FontWeight.bold,
+                          //             ),
+                          //           ),
+                          //         ),
+                          //       ),
+                          //       duration: Duration(seconds: 2),
+                          //     ),
+                          //   );
+                          //   return;
+                          // }
                           if (metodeBayarSelected == "") {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -1215,81 +1274,105 @@ class _BayarPageState extends State<BayarPage> {
                                 c.setSalesman("");
                                 c.setPelanggan("");
                                 c.setStatusBayar("");
+                                c.setReload(true);
 
                                 showDialog(
                                     context: context,
                                     builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        scrollable: true,
-                                        title: Text("Konfirmasi Whatsapp"),
-                                        // content: Text(
-                                        //     "Apakah anda yakin ingin mengirim invoice ini?"),
-                                        // Input no Whatsapp
-                                        content: SizedBox(
-                                          height: 100,
-                                          child: Column(
-                                            children: [
-                                              TextFormField(
-                                                controller: _noWaController,
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                decoration: InputDecoration(
-                                                  hintText: "No Whatsapp",
-                                                  border: OutlineInputBorder(),
+                                      return WillPopScope(
+                                        onWillPop: () async => false,
+                                        child: AlertDialog(
+                                          scrollable: true,
+                                          title: Text("Konfirmasi Whatsapp"),
+                                          // content: Text(
+                                          //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                          // Input no Whatsapp
+                                          content: SizedBox(
+                                            height: 100,
+                                            child: Column(
+                                              children: [
+                                                TextFormField(
+                                                  controller: _noWaController,
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  decoration: InputDecoration(
+                                                    hintText: "No Whatsapp",
+                                                    border:
+                                                        OutlineInputBorder(),
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              c.setActiveBayar(false);
-                                              Navigator.pop(
-                                                  context, 'redirect');
-                                            },
-                                            child: Text("Batal"),
-                                          ),
-                                          TextButton(
-                                            onPressed: () async {
-                                              await futureSendWa(
-                                                      value.data.invoiceId)
-                                                  .then((value) {
-                                                if (value.success) {
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(SnackBar(
-                                                    content: Text(
-                                                        "Invoice berhasil dikirim"),
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                  ));
-                                                } else {
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                c.setActiveBayar(false);
+                                                Navigator.pop(
+                                                    context, 'redirect');
+                                              },
+                                              child: Text("Batal"),
+                                            ),
+                                            TextButton(
+                                              onPressed: () async {
+                                                await EasyLoading.show(
+                                                  status: 'loading...',
+                                                  maskType:
+                                                      EasyLoadingMaskType.black,
+                                                  dismissOnTap: false,
+                                                );
+                                                await futureSendWa(
+                                                        value.data.invoiceId)
+                                                    .then((value) {
+                                                  if (value.success) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(SnackBar(
+                                                      content: Text(
+                                                          "Invoice berhasil dikirim"),
+                                                      backgroundColor:
+                                                          Colors.green,
+                                                    ));
+                                                  } else {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(SnackBar(
+                                                      content: Text(
+                                                          "Invoice gagal dikirim"),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ));
+                                                  }
+                                                  if (EasyLoading.isShow) {
+                                                    EasyLoading.dismiss();
+                                                  }
+                                                  Navigator.pop(context);
+                                                }).onError((error, stackTrace) {
+                                                  print(error);
+                                                  print(stackTrace);
                                                   ScaffoldMessenger.of(context)
                                                       .showSnackBar(SnackBar(
                                                     content: Text(
                                                         "Invoice gagal dikirim"),
                                                     backgroundColor: Colors.red,
                                                   ));
+                                                  if (EasyLoading.isShow) {
+                                                    EasyLoading.dismiss();
+                                                  }
+                                                  Navigator.pop(context);
+                                                });
+                                                if (EasyLoading.isShow) {
+                                                  await EasyLoading.dismiss();
                                                 }
-                                                Navigator.pop(context);
-                                              }).onError((error, stackTrace) {
-                                                print(error);
-                                                print(stackTrace);
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(SnackBar(
-                                                  content: Text(
-                                                      "Invoice gagal dikirim"),
-                                                  backgroundColor: Colors.red,
-                                                ));
-                                                Navigator.pop(context);
-                                              });
-                                              c.setActiveBayar(false);
-                                              Navigator.pop(context, 'success');
-                                            },
-                                            child: Text("Kirim"),
-                                          ),
-                                        ],
+                                                c.setActiveBayar(false);
+                                                Navigator.pop(
+                                                    context, 'success');
+                                              },
+                                              child: Text("Kirim"),
+                                            ),
+                                          ],
+                                        ),
                                       );
                                     });
                               } else {
@@ -1316,36 +1399,6 @@ class _BayarPageState extends State<BayarPage> {
                         },
                         icon: Icon(Icons.save),
                         label: Text('DRAFT'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Tombol Back & Cancel
-            SizedBox(
-              width: MediaQuery.of(context).size.width,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 1,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          primary: Colors.red,
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 2,
-                            vertical: 2,
-                          ),
-                        ),
-                        onPressed: () {
-                          c.setActiveBayar(false);
-                          Navigator.pop(context);
-                        },
-                        icon: Icon(Icons.arrow_back),
-                        label: Text('BACK'),
                       ),
                     ),
                     SizedBox(width: 5),

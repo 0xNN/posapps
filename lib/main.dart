@@ -28,6 +28,7 @@ import 'package:posapps/store/store.dart';
 import 'package:date_time_picker/date_time_picker.dart';
 import 'package:flutter_overlay_loader/flutter_overlay_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 enum PageSection {
   PENJUALAN,
@@ -71,12 +72,14 @@ class MyApp extends StatelessWidget {
       ),
       onGenerateRoute: router.generateRoute,
       home: const MyHomePage(title: 'Medeq POS'),
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaleFactor: 0.82),
-          child: child,
-        );
-      },
+      builder: EasyLoading.init(
+        builder: (context, child) {
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaleFactor: 0.82),
+            child: child,
+          );
+        },
+      ),
     );
   }
 }
@@ -121,6 +124,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Default now date
   final TextEditingController _dateController = TextEditingController(
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
+
+  // Sampai tanggal
+  final TextEditingController _dateToController = TextEditingController(
       text: DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
 
   Future<SalesmanRes> futureSalesmanRes() async {
@@ -220,7 +227,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<ProdukRes> futureProdukRes() async {
+  Future<ProdukRes> futureProdukRes({String invoiceId}) async {
     String url = '${API_URL}PosApps/Produk';
     print(url);
 
@@ -238,6 +245,7 @@ class _MyHomePageState extends State<MyHomePage> {
       "SubKategoriId": produkKategoriSelected == "No value selected"
           ? ""
           : produkKategoriDataMap[produkKategoriSelected].id,
+      "InvoiceId": invoiceId ?? "",
     };
     print(body);
     final response = await http.post(
@@ -336,6 +344,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // _getId();
     isLoading = true;
     c.setTanggal(_dateController.text);
+    c.setTanggalTo(_dateToController.text);
     futureSalesmanRes().then((value) async {
       if (MODE != "api") {
         if (value != null) {
@@ -431,7 +440,8 @@ class _MyHomePageState extends State<MyHomePage> {
             produkKategoriData = value.data;
           });
           print("JALANKAN INI");
-          futureProdukRes().then((value) async {
+          futureProdukRes(invoiceId: c.isEdit ? c.invoiceId : null)
+              .then((value) async {
             if (value != null) {
               if (MODE != "api") {
                 for (ProdukData produk in value.data) {
@@ -566,7 +576,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       ),
       accountName: Text(
-        'Medeq POS',
+        'Medeq Mandiri Utama - POS',
         style: TextStyle(
           color: Colors.black,
         ),
@@ -805,23 +815,35 @@ class _MyHomePageState extends State<MyHomePage> {
   //   );
   // }
 
-  void _refresh() {
+  void _refresh() async {
     print("MASUK REFRERGHSS");
-    setState(() {});
+    if (c.isEdit) {
+      await futureProdukRes(invoiceId: c.isEdit ? c.invoiceId : null)
+          .then((value) {
+        setState(() {
+          produkData = value.data;
+          produkDataOriginal = value.data;
+          isReset = true;
+        });
+      });
+    } else {
+      setState(() {});
+    }
   }
 
   void _reload() async {
     if (c.isReload) {
-      if (Loader.isShown) {
-        Loader.hide();
-      }
-      Loader.show(context, progressIndicator: CircularProgressIndicator());
+      // if (Loader.isShown) {
+      //   Loader.hide();
+      // }
+      // Loader.show(context, progressIndicator: CircularProgressIndicator());
       // setState(() {
       //   produkData = null;
       //   produkDataOriginal = null;
       //   isReset = true;
       // });
-      await futureProdukRes().then((value) {
+      await futureProdukRes(invoiceId: c.isEdit ? c.invoiceId : null)
+          .then((value) {
         setState(() {
           produkData = value.data;
           produkDataOriginal = value.data;
@@ -829,8 +851,8 @@ class _MyHomePageState extends State<MyHomePage> {
         });
         // context.loaderOverlay.hide();
       });
-      Loader.hide();
-      c.isReload = false;
+      // Loader.hide();
+      c.setReload(false);
     }
   }
 
@@ -841,6 +863,14 @@ class _MyHomePageState extends State<MyHomePage> {
     print(isBySearch);
     switch (c.activePage.value) {
       case "penjualan":
+        // futureProdukRes(invoiceId: c.isEdit ? c.invoiceId : null).then((value) {
+        //   setState(() {
+        //     produkData = value.data;
+        //     produkDataOriginal = value.data;
+        //     isReset = true;
+        //   });
+        //   // context.loaderOverlay.hide();
+        // });
         body = PenjualanPage(
           produkDatas: produkData == null ? [] : produkData,
           reset: isReset,
@@ -895,7 +925,9 @@ class _MyHomePageState extends State<MyHomePage> {
                             setState(() {
                               produkKategoriSelected = selected;
                             });
-                            futureProdukRes().then((value) {
+                            futureProdukRes(
+                                    invoiceId: c.isEdit ? c.invoiceId : null)
+                                .then((value) {
                               setState(() {
                                 produkData = value.data;
                                 produkDataOriginal = value.data;
@@ -1284,7 +1316,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               // scrollable: true,
                               title: Text("Filter"),
                               content: SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.3,
+                                width: MediaQuery.of(context).size.width * 0.5,
                                 child: Column(
                                   children: [
                                     // Pilih Salesman
@@ -1394,7 +1426,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                             controller: _dateController,
                                             decoration: InputDecoration(
                                               border: OutlineInputBorder(),
-                                              labelText: 'Tanggal',
+                                              labelText: 'Dari Tanggal',
                                               suffixIcon:
                                                   Icon(Icons.date_range),
                                               isDense: true,
@@ -1425,7 +1457,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                             },
                                           ),
                                         ),
-                                        SizedBox(width: 10),
+                                        SizedBox(width: 5),
                                         // Clear
                                         InkWell(
                                           onTap: () {
@@ -1433,6 +1465,59 @@ class _MyHomePageState extends State<MyHomePage> {
                                             c.setTanggal("");
                                             updateState(() {
                                               _dateController.text = "";
+                                            });
+                                          },
+                                          child: Icon(
+                                            Icons.clear,
+                                            color: Colors.red,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        SizedBox(width: 15),
+                                        Expanded(
+                                          child: DateTimePicker(
+                                            controller: _dateToController,
+                                            decoration: InputDecoration(
+                                              border: OutlineInputBorder(),
+                                              labelText: 'Sampai Tanggal',
+                                              suffixIcon:
+                                                  Icon(Icons.date_range),
+                                              isDense: true,
+                                            ),
+                                            // initialValue: date,
+                                            type: DateTimePickerType.date,
+                                            initialDate: DateTime.now(),
+                                            firstDate: DateTime(2000),
+                                            lastDate: DateTime(2100),
+                                            dateLabelText: 'Tanggal',
+                                            dateMask: 'yyyy-MM-dd',
+                                            onChanged: (val) {
+                                              print(val);
+                                              print("CHANGED");
+                                              // setState(() {
+                                              //   date = val;
+                                              // });
+                                              _dateToController.text = val;
+                                              c.setTanggalTo(val);
+                                            },
+                                            validator: (val) {
+                                              print(val);
+                                              return null;
+                                            },
+                                            onSaved: (val) {
+                                              print(val);
+                                              print("SAVED");
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(width: 5),
+                                        // Clear
+                                        InkWell(
+                                          onTap: () {
+                                            // Navigator.pop(context);
+                                            c.setTanggalTo("");
+                                            updateState(() {
+                                              _dateToController.text = "";
                                             });
                                           },
                                           child: Icon(
@@ -1511,18 +1596,41 @@ class _MyHomePageState extends State<MyHomePage> {
             _drawerHeader(id),
             _drawerItem(
               icon: Icons.shopping_basket,
-              text: 'Penjualan',
-              onTap: () {
-                Navigator.pop(context);
+              text: 'Transaksi Invoice',
+              onTap: () async {
                 // setState(() {
                 //   activePage = "penjualan";
                 // });
+                print(c.isReload);
+                print("BEFOREE");
+                if (c.isReload) {
+                  await EasyLoading.show(
+                    status: 'Sedang memuat data...',
+                    dismissOnTap: false,
+                    maskType: EasyLoadingMaskType.black,
+                  );
+                  await futureProdukRes(
+                          invoiceId: c.isEdit ? c.invoiceId : null)
+                      .then((value) {
+                    setState(() {
+                      produkData = value.data;
+                      produkDataOriginal = value.data;
+                      isReset = true;
+                    });
+                    // context.loaderOverlay.hide();
+                  });
+                  if (EasyLoading.isShow) {
+                    await EasyLoading.dismiss();
+                  }
+                }
+                Navigator.pop(context);
+                print("CLICKAGAIN");
+                c.setActivePage("penjualan");
+                c.cancelEdit();
+                c.setSalesman("");
+                c.setPelanggan("");
+                c.setStatusBayar("");
                 setState(() {
-                  c.setActivePage("penjualan");
-                  c.cancelEdit();
-                  c.setSalesman("");
-                  c.setPelanggan("");
-                  c.setStatusBayar("");
                   isBySearch = false;
                 });
               },
@@ -1530,18 +1638,18 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             _drawerItem(
               icon: Icons.note_alt,
-              text: 'Transaksi',
+              text: 'Laporan Penjualan',
               onTap: () {
                 Navigator.pop(context);
                 // setState(() {
                 //   activePage = "transaksi";
                 // });
+                c.setActivePage("transaksi");
+                c.cancelEdit();
+                c.setSalesman("");
+                c.setPelanggan("");
+                c.setStatusBayar("");
                 setState(() {
-                  c.setActivePage("transaksi");
-                  c.cancelEdit();
-                  c.setSalesman("");
-                  c.setPelanggan("");
-                  c.setStatusBayar("");
                   isBySearch = false;
                 });
               },

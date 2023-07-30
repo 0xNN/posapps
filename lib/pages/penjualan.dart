@@ -310,7 +310,7 @@ class _PenjualanPageState extends State<PenjualanPage>
       });
       _controller.restart();
       c.setActivePage("transaksi");
-      c.setReload(false);
+      // c.setReload(false);
       c.setTanggal(DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal()));
     }
     widget.refresh();
@@ -341,7 +341,8 @@ class _PenjualanPageState extends State<PenjualanPage>
     }
   }
 
-  Future<ProdukRes> futureProdukFromEditRes(String id) async {
+  Future<ProdukRes> futureProdukFromEditRes(String id,
+      {String invoiceId}) async {
     // await pd.show();
     String url = '${API_URL}PosApps/Produk';
     print(url);
@@ -349,6 +350,7 @@ class _PenjualanPageState extends State<PenjualanPage>
       "ProdukId": id ?? "",
       "PelangganId": "",
       "SubKategoriId": "",
+      "InvoiceId": invoiceId ?? "",
     };
     print(body);
     final response = await http.post(
@@ -497,7 +499,9 @@ class _PenjualanPageState extends State<PenjualanPage>
           pelangganSelected = invoiceData.pelanggan;
         });
         for (DetailInvoice element in invoiceData.detailInvoice) {
-          futureProdukFromEditRes(element.produkId).then((v) async {
+          futureProdukFromEditRes(element.produkId,
+                  invoiceId: c.isEdit ? c.invoiceId : null)
+              .then((v) async {
             if (value != null) {
               if (MODE != "api") {
                 for (ProdukData produk in v.data) {
@@ -593,6 +597,9 @@ class _PenjualanPageState extends State<PenjualanPage>
     }
     if (!c.isReload) {
       _controller.restart();
+    } else {
+      print("MASUK RELOADDDDDD");
+      widget.reload();
     }
     if (oldWidget.reset) {
       // if (widget.bySearch) {
@@ -692,7 +699,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                                         // });
                                         c.setReload(true);
                                         widget.reload();
-                                        _controller.restart();
+                                        // _controller.restart();
                                       },
                                     ),
                                   ],
@@ -822,7 +829,9 @@ class _PenjualanPageState extends State<PenjualanPage>
                                       element.produkId);
                                 }
                               },
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
                                 height: 30,
                                 margin: EdgeInsets.all(2.0),
                                 decoration: BoxDecoration(
@@ -1052,7 +1061,9 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                 .rowUniqueId)
                                     .toList()
                                     .length;
-                                return Container(
+                                return AnimatedContainer(
+                                    duration: Duration(milliseconds: 100),
+                                    curve: Curves.easeInOut,
                                     margin: EdgeInsets.only(bottom: 4.0),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
@@ -1371,7 +1382,6 @@ class _PenjualanPageState extends State<PenjualanPage>
                                       ),
                                       trailing: InkWell(
                                         onTap: () {
-                                          c.setReload(true);
                                           setState(() {
                                             total -= double.parse(
                                                 produkDipilihSet
@@ -1504,9 +1514,14 @@ class _PenjualanPageState extends State<PenjualanPage>
                                             print("PRODUK DIPILIH");
                                             print(produkDipilih.length);
                                             print(produkDipilihSet.length);
-                                            isPause = false;
                                           });
-                                          _controller.restart();
+                                          if (produkDipilih.isEmpty) {
+                                            c.setReload(false);
+                                            setState(() {
+                                              isPause = false;
+                                            });
+                                            _controller.restart();
+                                          }
                                         },
                                         child: Container(
                                           height: 20,
@@ -1532,144 +1547,153 @@ class _PenjualanPageState extends State<PenjualanPage>
                     padding: EdgeInsets.symmetric(
                       horizontal: 8.0,
                     ),
-                    child: Row(
-                      children: [
-                        // Pilih Salesman
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade300,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          padding: EdgeInsets.all(4),
-                          child: InkWell(
-                            onTap: () {
-                              SelectDialog.showModal<String>(
-                                context,
-                                label: "List Salesman",
-                                selectedValue: salesmanSelected,
-                                items: salesmanData == null
-                                    ? []
-                                    : salesmanData.map((SalesmanData item) {
-                                        return item.nama;
-                                      }).toList(),
-                                onChange: (String selected) async {
-                                  setState(() {
-                                    salesmanSelected = selected;
-                                    isPelangganLoad = true;
-                                  });
-                                  await futurePelangganRes(
-                                          salesmanMap[selected].id)
-                                      .then((value) async {
-                                    if (MODE != "api") {
-                                      if (value != null) {
-                                        for (PelangganData data in value.data) {
-                                          await dbHelper.insertPelanggan(data);
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          // Pilih Salesman
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade300,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            padding: EdgeInsets.all(4),
+                            child: InkWell(
+                              onTap: () {
+                                SelectDialog.showModal<String>(
+                                  context,
+                                  label: "List Salesman",
+                                  selectedValue: salesmanSelected,
+                                  items: salesmanData == null
+                                      ? []
+                                      : salesmanData.map((SalesmanData item) {
+                                          return item.nama;
+                                        }).toList(),
+                                  onChange: (String selected) async {
+                                    setState(() {
+                                      salesmanSelected = selected;
+                                      isPelangganLoad = true;
+                                    });
+                                    await futurePelangganRes(
+                                            salesmanMap[selected].id)
+                                        .then((value) async {
+                                      if (MODE != "api") {
+                                        if (value != null) {
+                                          for (PelangganData data
+                                              in value.data) {
+                                            await dbHelper
+                                                .insertPelanggan(data);
+                                          }
                                         }
-                                      }
-                                      await dbHelper.pelanggans().then((value) {
+                                        await dbHelper
+                                            .pelanggans()
+                                            .then((value) {
+                                          setState(() {
+                                            pelangganData = value;
+                                            pelangganSelected =
+                                                "Pilih Customer";
+                                            isPelangganLoad = false;
+                                          });
+                                        }).catchError((error) {
+                                          print(error);
+                                          setState(() {
+                                            pelangganData = null;
+                                            pelangganSelected =
+                                                "Pilih Customer";
+                                          });
+                                        });
+                                      } else {
                                         setState(() {
-                                          pelangganData = value;
+                                          pelangganData = value.data;
                                           pelangganSelected = "Pilih Customer";
                                           isPelangganLoad = false;
                                         });
-                                      }).catchError((error) {
-                                        print(error);
-                                        setState(() {
-                                          pelangganData = null;
-                                          pelangganSelected = "Pilih Customer";
-                                        });
-                                      });
-                                    } else {
+                                      }
+                                    }).onError((error, stackTrace) {
+                                      print(error);
+                                      print(stackTrace);
                                       setState(() {
-                                        pelangganData = value.data;
+                                        pelangganData = null;
                                         pelangganSelected = "Pilih Customer";
                                         isPelangganLoad = false;
                                       });
-                                    }
-                                  }).onError((error, stackTrace) {
-                                    print(error);
-                                    print(stackTrace);
-                                    setState(() {
-                                      pelangganData = null;
-                                      pelangganSelected = "Pilih Customer";
-                                      isPelangganLoad = false;
                                     });
-                                  });
-                                },
-                                constraints: BoxConstraints(
-                                    maxHeight: 400, maxWidth: 400),
-                              );
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  salesmanSelected,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Icon(Icons.arrow_drop_down,
-                                    color: Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        // Pilih Pelanggan
-                        Container(
-                          decoration: BoxDecoration(
-                            color: isPelangganLoad
-                                ? Colors.grey
-                                : Colors.blue.shade300,
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          padding: EdgeInsets.all(4),
-                          child: InkWell(
-                            onTap: isPelangganLoad
-                                ? null
-                                : () {
-                                    SelectDialog.showModal<String>(
-                                      context,
-                                      label: "List Pelanggan",
-                                      selectedValue: pelangganSelected,
-                                      items: pelangganData == null
-                                          ? []
-                                          : pelangganData
-                                              .map((PelangganData item) {
-                                              return item.nama;
-                                            }).toList(),
-                                      onChange: (String selected) {
-                                        setState(() {
-                                          pelangganSelected = selected;
-                                        });
-                                      },
-                                      constraints: BoxConstraints(
-                                          maxHeight: 400, maxWidth: 400),
-                                    );
                                   },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  isPelangganLoad
-                                      ? "Loading"
-                                      : pelangganSelected,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                  constraints: BoxConstraints(
+                                      maxHeight: 400, maxWidth: 400),
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    salesmanSelected,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                Icon(Icons.arrow_drop_down,
-                                    color: Colors.white),
-                              ],
+                                  Icon(Icons.arrow_drop_down,
+                                      color: Colors.white),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 10),
+                          // Pilih Pelanggan
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isPelangganLoad
+                                  ? Colors.grey
+                                  : Colors.blue.shade300,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            padding: EdgeInsets.all(4),
+                            child: InkWell(
+                              onTap: isPelangganLoad
+                                  ? null
+                                  : () {
+                                      SelectDialog.showModal<String>(
+                                        context,
+                                        label: "List Pelanggan",
+                                        selectedValue: pelangganSelected,
+                                        items: pelangganData == null
+                                            ? []
+                                            : pelangganData
+                                                .map((PelangganData item) {
+                                                return item.nama;
+                                              }).toList(),
+                                        onChange: (String selected) {
+                                          setState(() {
+                                            pelangganSelected = selected;
+                                          });
+                                        },
+                                        constraints: BoxConstraints(
+                                            maxHeight: 400, maxWidth: 400),
+                                      );
+                                    },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    isPelangganLoad
+                                        ? "Loading"
+                                        : pelangganSelected,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Icon(Icons.arrow_drop_down,
+                                      color: Colors.white),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   Divider(),
@@ -1739,6 +1763,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                             ),
                             onPressed: () {
                               showDialog(
+                                  // barrierDismissible: false,
                                   context: context,
                                   builder: (context) {
                                     return StatefulBuilder(
@@ -1844,6 +1869,9 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                                 });
                                                                 _controller
                                                                     .restart();
+                                                                c.setReload(
+                                                                    true);
+                                                                widget.reload();
                                                               } else {
                                                                 updateState(() {
                                                                   isDraft =
@@ -1945,6 +1973,12 @@ class _PenjualanPageState extends State<PenjualanPage>
                                               onPressed: () {
                                                 Navigator.pop(context);
                                                 c.setReload(true);
+                                                if (c.isEdit) {
+                                                  c.cancelEdit();
+                                                  c.setSalesman("");
+                                                  c.setPelanggan("");
+                                                  c.setStatusBayar("");
+                                                }
                                                 setState(() {
                                                   produkDipilih.clear();
                                                   produkDipilihSet.clear();

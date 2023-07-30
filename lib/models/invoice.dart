@@ -83,6 +83,7 @@ class ListInvoice {
   String salesman;
   String pelanggan;
   String metodeBayar;
+  String isSinkron;
   String kode;
   String grandTotal;
   String sisaTagihan;
@@ -106,6 +107,7 @@ class ListInvoice {
     this.salesman,
     this.pelanggan,
     this.metodeBayar,
+    this.isSinkron,
     this.kode,
     this.grandTotal,
     this.sisaTagihan,
@@ -135,6 +137,7 @@ class ListInvoice {
         salesman: json["Salesman"],
         pelanggan: json["Pelanggan"],
         metodeBayar: json["MetodeBayar"],
+        isSinkron: json["IsSinkron"],
         kode: json["Kode"],
         grandTotal: json["GrandTotal"].toString(),
         sisaTagihan: json["SisaTagihan"].toString(),
@@ -162,6 +165,7 @@ class ListInvoice {
         "Salesman": salesman,
         "Pelanggan": pelanggan,
         "MetodeBayar": metodeBayar,
+        "IsSinkron": isSinkron,
         "Kode": kode,
         "GrandTotal": grandTotal,
         "SisaTagihan": sisaTagihan,
