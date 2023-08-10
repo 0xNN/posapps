@@ -934,6 +934,10 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                                     () async {
                                                                   // Navigator.pop(
                                                                   //     context);
+                                                                  FocusManager
+                                                                      .instance
+                                                                      .primaryFocus
+                                                                      .unfocus();
                                                                   await EasyLoading
                                                                       .show(
                                                                     status:
@@ -1420,6 +1424,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                                       invoiceDataSelected =
                                                                           null;
                                                                     });
+                                                                    c.setReload(
+                                                                        true);
                                                                     Navigator.pop(
                                                                         context);
                                                                     ScaffoldMessenger.of(

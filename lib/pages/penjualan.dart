@@ -609,18 +609,25 @@ class _PenjualanPageState extends State<PenjualanPage>
       print("IS ACTIVE BAYAR");
       print(c.isActiveBayar);
       if (!c.isActiveBayar) {
-        print("MASUK BY SEARCH 1 WIDGET RESET TRUE");
-        setState(() {
-          for (ProdukData element in widget.produkDatas) {
-            _controllers[element.rowUniqueId] = TextEditingController(text: "");
-            _diskonNominal[element.rowUniqueId] = 0;
-            _diskonPersen[element.rowUniqueId] = 0.0;
+        if (!widget.bySearch) {
+          if (c.isResetProduk) {
+            print("MASUK BY SEARCH 1 WIDGET RESET TRUE");
+            setState(() {
+              for (ProdukData element in widget.produkDatas) {
+                _controllers[element.rowUniqueId] =
+                    TextEditingController(text: "");
+                _diskonNominal[element.rowUniqueId] = 0;
+                _diskonPersen[element.rowUniqueId] = 0.0;
+              }
+              produkDipilih.clear();
+              produkDipilihSet.clear();
+              total = 0;
+              _subTotalPerItem.clear();
+              isPause = false;
+            });
+            _controller.restart();
           }
-          produkDipilih.clear();
-          produkDipilihSet.clear();
-          total = 0;
-          _subTotalPerItem.clear();
-        });
+        }
       }
     }
     //  else {
@@ -719,6 +726,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                               onTap: () {
                                 _controller.pause();
                                 c.setReload(false);
+                                c.setResetProduk(false);
                                 setState(() {
                                   isPause = true;
                                 });
@@ -1151,233 +1159,6 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                     )
                                             ],
                                           ),
-                                          // Input Diskon
-                                          // Row(
-                                          //   children: [
-                                          //     Expanded(
-                                          //       flex: 2,
-                                          //       child: TextFormField(
-                                          //         controller: _controllers[
-                                          //             produkDipilihSet
-                                          //                 .elementAt(index)
-                                          //                 .rowUniqueId],
-                                          //         keyboardType:
-                                          //             TextInputType.number,
-                                          //         decoration: InputDecoration(
-                                          //           isDense: true,
-                                          //           hintText: "Nominal Diskon",
-                                          //           hintStyle: TextStyle(
-                                          //             fontSize: 12.0,
-                                          //             color: Colors.grey[600],
-                                          //             fontWeight:
-                                          //                 FontWeight.w600,
-                                          //           ),
-                                          //           contentPadding:
-                                          //               EdgeInsets.symmetric(
-                                          //                   horizontal: 8.0,
-                                          //                   vertical: 8.0),
-                                          //           border: OutlineInputBorder(
-                                          //             borderRadius:
-                                          //                 BorderRadius.circular(
-                                          //                     4.0),
-                                          //             borderSide: BorderSide(
-                                          //               color: Colors.grey[300],
-                                          //               width: 1.0,
-                                          //             ),
-                                          //           ),
-                                          //           enabledBorder:
-                                          //               OutlineInputBorder(
-                                          //             borderRadius:
-                                          //                 BorderRadius.circular(
-                                          //                     4.0),
-                                          //             borderSide: BorderSide(
-                                          //               color: Colors.grey[300],
-                                          //               width: 1.0,
-                                          //             ),
-                                          //           ),
-                                          //           focusedBorder:
-                                          //               OutlineInputBorder(
-                                          //             borderRadius:
-                                          //                 BorderRadius.circular(
-                                          //                     4.0),
-                                          //             borderSide: BorderSide(
-                                          //               color: Colors.grey[300],
-                                          //               width: 1.0,
-                                          //             ),
-                                          //           ),
-                                          //         ),
-                                          //         onChanged: (value) {
-                                          //           if (value != "") {
-                                          //             if (int.parse(value) >
-                                          //                 int.parse(
-                                          //                     produkDipilihSet
-                                          //                         .elementAt(
-                                          //                             index)
-                                          //                         .hargaJual)) {
-                                          //               showDialog(
-                                          //                 context: context,
-                                          //                 builder: (context) =>
-                                          //                     AlertDialog(
-                                          //                   title: Text(
-                                          //                       "Peringatan"),
-                                          //                   content: Text(
-                                          //                       "Diskon tidak boleh lebih besar dari harga jual"),
-                                          //                   actions: [
-                                          //                     TextButton(
-                                          //                       onPressed: () {
-                                          //                         Navigator.pop(
-                                          //                             context);
-                                          //                       },
-                                          //                       child:
-                                          //                           Text("OK"),
-                                          //                     )
-                                          //                   ],
-                                          //                 ),
-                                          //               );
-                                          //               _controllers[produkDipilihSet
-                                          //                           .elementAt(
-                                          //                               index)
-                                          //                           .rowUniqueId]
-                                          //                       .value =
-                                          //                   TextEditingValue(
-                                          //                 text: "",
-                                          //               );
-                                          //               setState(() {
-                                          //                 _diskonNominal[
-                                          //                     produkDipilihSet
-                                          //                         .elementAt(
-                                          //                             index)
-                                          //                         .rowUniqueId] = 0;
-                                          //                 _diskonPersen[
-                                          //                     produkDipilihSet
-                                          //                         .elementAt(
-                                          //                             index)
-                                          //                         .rowUniqueId] = 0;
-                                          //               });
-                                          //               FocusManager.instance
-                                          //                   .primaryFocus
-                                          //                   .unfocus();
-                                          //             } else {
-                                          //               setState(() {
-                                          //                 _diskonNominal[
-                                          //                     produkDipilihSet
-                                          //                         .elementAt(
-                                          //                             index)
-                                          //                         .rowUniqueId] = int
-                                          //                     .parse(value);
-                                          //                 _diskonPersen[
-                                          //                     produkDipilihSet
-                                          //                         .elementAt(
-                                          //                             index)
-                                          //                         .rowUniqueId] = ((int
-                                          //                             .parse(
-                                          //                                 value) /
-                                          //                         int.parse(produkDipilihSet
-                                          //                             .elementAt(
-                                          //                                 index)
-                                          //                             .hargaJual)) *
-                                          //                     100);
-                                          //               });
-                                          //             }
-                                          //           } else {
-                                          //             setState(() {
-                                          //               _diskonNominal[
-                                          //                   produkDipilihSet
-                                          //                       .elementAt(
-                                          //                           index)
-                                          //                       .rowUniqueId] = 0;
-                                          //               _diskonPersen[
-                                          //                   produkDipilihSet
-                                          //                       .elementAt(
-                                          //                           index)
-                                          //                       .rowUniqueId] = 0;
-                                          //             });
-                                          //             FocusManager
-                                          //                 .instance.primaryFocus
-                                          //                 .unfocus();
-                                          //           }
-                                          //           int produkLength = produkDipilih
-                                          //               .where((element) =>
-                                          //                   element.produkId ==
-                                          //                       produkDipilihSet
-                                          //                           .elementAt(
-                                          //                               index)
-                                          //                           .produkId &&
-                                          //                   element.rowUniqueId ==
-                                          //                       produkDipilihSet
-                                          //                           .elementAt(
-                                          //                               index)
-                                          //                           .rowUniqueId)
-                                          //               .toList()
-                                          //               .length;
-                                          //           _subTotalPerItem[
-                                          //               produkDipilihSet
-                                          //                   .elementAt(index)
-                                          //                   .rowUniqueId] = produkLength *
-                                          //               (int.parse(
-                                          //                       produkDipilihSet
-                                          //                           .elementAt(
-                                          //                               index)
-                                          //                           .hargaJual) -
-                                          //                   _diskonNominal[
-                                          //                       produkDipilihSet
-                                          //                           .elementAt(
-                                          //                               index)
-                                          //                           .rowUniqueId]);
-                                          //           Future.delayed(
-                                          //               Duration(
-                                          //                   milliseconds: 100),
-                                          //               () {
-                                          //             int totalDiskon = 0;
-                                          //             _diskonNominal.forEach(
-                                          //                 (key, value) {
-                                          //               print(value);
-                                          //               if (value > 0) {
-                                          //                 totalDiskon += value;
-                                          //               }
-                                          //             });
-                                          //             setState(() {
-                                          //               _totalDiskon =
-                                          //                   totalDiskon;
-                                          //             });
-                                          //           });
-                                          //           print("SUB TOTALSSSS");
-                                          //           print(_subTotalPerItem
-                                          //               .length);
-                                          //         },
-                                          //         style: TextStyle(
-                                          //           fontSize: 12.0,
-                                          //           color: Colors.grey[600],
-                                          //           fontWeight: FontWeight.w600,
-                                          //         ),
-                                          //       ),
-                                          //     ),
-                                          //     SizedBox(width: 4.0),
-                                          //     // Persentase
-                                          //     Expanded(
-                                          //       flex: 1,
-                                          //       child: Text(
-                                          //         _diskonPersen[produkDipilihSet
-                                          //                     .elementAt(index)
-                                          //                     .rowUniqueId] ==
-                                          //                 null
-                                          //             ? "0%"
-                                          //             : _diskonPersen[produkDipilihSet
-                                          //                         .elementAt(
-                                          //                             index)
-                                          //                         .rowUniqueId]
-                                          //                     .toStringAsFixed(
-                                          //                         2) +
-                                          //                 "%",
-                                          //         style: TextStyle(
-                                          //           fontSize: 12.0,
-                                          //           color: Colors.green[600],
-                                          //           fontWeight: FontWeight.w600,
-                                          //         ),
-                                          //       ),
-                                          //     ),
-                                          //   ],
-                                          // ),
                                         ],
                                       ),
                                       trailing: InkWell(
@@ -1387,12 +1168,6 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                 produkDipilihSet
                                                     .elementAt(index)
                                                     .hargaJual);
-                                            // _diskonNominal
-                                            //     .forEach((key, value) {
-                                            //   if (value != 0) {
-                                            //     total += value;
-                                            //   }
-                                            // });
                                             List<ProdukData> produkLength =
                                                 produkDipilih
                                                     .where((element) =>
@@ -1510,13 +1285,10 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                         .elementAt(index));
                                               }
                                             }
-                                            print(_subTotalPerItem);
-                                            print("PRODUK DIPILIH");
-                                            print(produkDipilih.length);
-                                            print(produkDipilihSet.length);
                                           });
                                           if (produkDipilih.isEmpty) {
                                             c.setReload(false);
+                                            c.setResetProduk(true);
                                             setState(() {
                                               isPause = false;
                                             });

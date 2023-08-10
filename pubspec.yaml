@@ -53,6 +53,7 @@ dependencies:
   flutter_overlay_loader: ^2.0.0
   shared_preferences: ^2.0.15
   flutter_easyloading: ^3.0.5
+  awesome_dialog: ^3.0.2
   # loader_overlay: ^2.2.0
   # flutter_spinkit: ^5.2.0
 

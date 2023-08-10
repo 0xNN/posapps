@@ -15,6 +15,7 @@ class Controller extends GetxController {
   var salesmanId = ''.obs;
   bool isReload = false;
   bool isReloadProduk = false;
+  bool isResetProduk = true;
 
   increment() => count++;
 
@@ -75,6 +76,11 @@ class Controller extends GetxController {
 
   setTanggalTo(tanggalTo) {
     this.tanggalTo.value = tanggalTo;
+    update();
+  }
+
+  setResetProduk(bool isResetProduk) {
+    this.isResetProduk = isResetProduk;
     update();
   }
 }

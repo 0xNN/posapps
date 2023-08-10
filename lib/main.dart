@@ -29,6 +29,7 @@ import 'package:date_time_picker/date_time_picker.dart';
 import 'package:flutter_overlay_loader/flutter_overlay_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 
 enum PageSection {
   PENJUALAN,
@@ -619,202 +620,6 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  // _showMoreDialog(BuildContext context) {
-  //   showDialog(
-  //     barrierDismissible: false,
-  //     context: context,
-  //     builder: (context) {
-  //       return StatefulBuilder(builder: (context, updateState) {
-  //         return Dialog(
-  //           shape:
-  //               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-  //           elevation: 16,
-  //           child: SizedBox(
-  //             width: MediaQuery.of(context).size.width * 0.5,
-  //             height: MediaQuery.of(context).size.height * 0.6,
-  //             child: Column(
-  //               children: <Widget>[
-  //                 Container(
-  //                   padding: const EdgeInsets.all(15),
-  //                   decoration: BoxDecoration(
-  //                     color: Colors.blue.shade50,
-  //                     borderRadius: BorderRadius.only(
-  //                       topLeft: Radius.circular(10),
-  //                       topRight: Radius.circular(10),
-  //                     ),
-  //                   ),
-  //                   child: Center(
-  //                     child: Text(
-  //                       'Pilih Data Gudang',
-  //                       textAlign: TextAlign.center,
-  //                       style: TextStyle(
-  //                         fontSize: 16,
-  //                         fontWeight: FontWeight.bold,
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ),
-  //                 const SizedBox(height: 20),
-  //                 Padding(
-  //                   padding: const EdgeInsets.only(
-  //                     left: 20,
-  //                     right: 20,
-  //                   ),
-  //                   child: Align(
-  //                     alignment: Alignment.center,
-  //                     child: DropdownSearch<String>(
-  //                       mode: Mode.MENU,
-  //                       showSelectedItems: true,
-  //                       items: items,
-  //                       dropdownSearchDecoration: InputDecoration(
-  //                         labelText: "Pilih Gudang",
-  //                         hintText: "Pilih Gudang",
-  //                       ),
-  //                       // popupItemDisabled: (String s) => s.startsWith('I'),
-  //                       onChanged: (newValue) {
-  //                         updateState(() {
-  //                           dropdownvalue = newValue;
-  //                         });
-  //                         setState(() {});
-  //                       },
-  //                       selectedItem: dropdownvalue,
-  //                     ),
-  //                     // DropdownButtonFormField(
-  //                     //   elevation: 0,
-  //                     //   decoration: InputDecoration(
-  //                     //     enabledBorder: OutlineInputBorder(
-  //                     //       borderSide: BorderSide(
-  //                     //           color: Colors.grey.shade200, width: 1),
-  //                     //       borderRadius: BorderRadius.circular(10),
-  //                     //     ),
-  //                     //     border: OutlineInputBorder(
-  //                     //       borderSide: BorderSide(
-  //                     //           color: Colors.grey.shade200, width: 1),
-  //                     //       borderRadius: BorderRadius.circular(10),
-  //                     //     ),
-  //                     //     filled: true,
-  //                     //     fillColor: Colors.grey.shade200,
-  //                     //   ),
-  //                     //   dropdownColor: Colors.grey.shade200,
-  //                     //   value: dropdownvalue,
-  //                     //   onChanged: (String newValue) {
-  //                     //     setState(() {
-  //                     //       dropdownvalue = newValue;
-  //                     //     });
-  //                     //   },
-  //                     //   items: items.map((String items) {
-  //                     //     return DropdownMenuItem(
-  //                     //       value: items,
-  //                     //       child: Text(items),
-  //                     //     );
-  //                     //   }).toList(),
-  //                     // ),
-  //                   ),
-  //                 ),
-  //                 Spacer(),
-  //                 Divider(),
-  //                 Row(
-  //                   children: <Widget>[
-  //                     SizedBox(width: 20),
-  //                     Expanded(
-  //                       child: ElevatedButton(
-  //                         style: ElevatedButton.styleFrom(
-  //                           primary: Colors.grey.shade300,
-  //                           shadowColor: Colors.transparent,
-  //                           onPrimary: Colors.black,
-  //                         ),
-  //                         onPressed: () async {
-  //                           Navigator.of(context).pop();
-  //                           futureProdukRes().then((value) {
-  //                             setState(() {
-  //                               produkData = value.data;
-  //                               produkDataOriginal = value.data;
-  //                               isReset = true;
-  //                             });
-  //                           });
-  //                         },
-  //                         child: Text('OK'),
-  //                       ),
-  //                     ),
-  //                     // SizedBox(width: 20),
-  //                     // Expanded(
-  //                     //   child: ElevatedButton(
-  //                     //     style: ElevatedButton.styleFrom(
-  //                     //       primary: Colors.blue.shade500,
-  //                     //       shadowColor: Colors.transparent,
-  //                     //       onPrimary: Colors.white,
-  //                     //     ),
-  //                     //     onPressed: isLoading
-  //                     //         ? null
-  //                     //         : () async {
-  //                     //             updateState(() {
-  //                     //               isLoading = true;
-  //                     //             });
-  //                     //             await futureProdukKategoriRes()
-  //                     //                 .then((value) async {
-  //                     //               if (value != null) {
-  //                     //                 for (ProdukKategoriData produkKategori
-  //                     //                     in value.data) {
-  //                     //                   await dbHelper.insertProdukKategori(
-  //                     //                       produkKategori);
-  //                     //                 }
-  //                     //                 await dbHelper
-  //                     //                     .produkKategoris()
-  //                     //                     .then((value) {
-  //                     //                   updateState(() {
-  //                     //                     produkKategoriData = value;
-  //                     //                   });
-  //                     //                 });
-  //                     //               }
-  //                     //             }).catchError((error) {
-  //                     //               print("ERROR: $error");
-  //                     //             });
-  //                     //             await futureProdukRes().then((value) async {
-  //                     //               if (value != null) {
-  //                     //                 for (ProdukData produk in value.data) {
-  //                     //                   dbHelper.insertProduk(produk);
-  //                     //                 }
-  //                     //                 await dbHelper.produks().then((value) {
-  //                     //                   updateState(() {
-  //                     //                     produkData = value;
-  //                     //                   });
-  //                     //                   setState(() {});
-  //                     //                 });
-  //                     //               }
-  //                     //             }).catchError((error) {
-  //                     //               print("ERROR: $error");
-  //                     //             });
-  //                     //             updateState(() {
-  //                     //               isLoading = false;
-  //                     //             });
-  //                     //             Navigator.of(context).pop();
-  //                     //           },
-  //                     //     child: isLoading
-  //                     //         ? SizedBox(
-  //                     //             height: 20,
-  //                     //             width: 20,
-  //                     //             child: CircularProgressIndicator(
-  //                     //               strokeWidth: 2,
-  //                     //               valueColor: AlwaysStoppedAnimation<Color>(
-  //                     //                   Colors.white),
-  //                     //             ),
-  //                     //           )
-  //                     //         : Text('Sync'),
-  //                     //   ),
-  //                     // ),
-  //                     SizedBox(width: 20),
-  //                   ],
-  //                 ),
-  //                 SizedBox(height: 10),
-  //               ],
-  //             ),
-  //           ),
-  //         );
-  //       });
-  //     },
-  //   );
-  // }
-
   void _refresh() async {
     print("MASUK REFRERGHSS");
     if (c.isEdit) {
@@ -863,14 +668,6 @@ class _MyHomePageState extends State<MyHomePage> {
     print(isBySearch);
     switch (c.activePage.value) {
       case "penjualan":
-        // futureProdukRes(invoiceId: c.isEdit ? c.invoiceId : null).then((value) {
-        //   setState(() {
-        //     produkData = value.data;
-        //     produkDataOriginal = value.data;
-        //     isReset = true;
-        //   });
-        //   // context.loaderOverlay.hide();
-        // });
         body = PenjualanPage(
           produkDatas: produkData == null ? [] : produkData,
           reset: isReset,
@@ -900,7 +697,7 @@ class _MyHomePageState extends State<MyHomePage> {
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         elevation: 0,
-        title: c.activePage == "penjualan"
+        title: c.activePage.toString() == "penjualan"
             ? Row(
                 children: [
                   Container(
@@ -910,34 +707,86 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                     padding: EdgeInsets.all(7),
                     child: InkWell(
-                      onTap: () {
-                        SelectDialog.showModal<String>(
-                          context,
-                          label: "List Produk Kategori",
-                          selectedValue: produkKategoriSelected,
-                          items: produkKategoriData == null
-                              ? []
-                              : produkKategoriData
-                                  .map((ProdukKategoriData item) {
-                                  return item.nama;
-                                }).toList(),
-                          onChange: (String selected) {
-                            setState(() {
-                              produkKategoriSelected = selected;
-                            });
-                            futureProdukRes(
-                                    invoiceId: c.isEdit ? c.invoiceId : null)
-                                .then((value) {
+                      onTap: () async {
+                        if (!c.isResetProduk) {
+                          await AwesomeDialog(
+                            context: context,
+                            dialogType: DialogType.question,
+                            animType: AnimType.topSlide,
+                            title: 'Konfirmasi',
+                            desc:
+                                'Mengganti kategori akan mereset produk beserta keranjang. Lanjutkan?',
+                            dismissOnTouchOutside: false,
+                            dismissOnBackKeyPress: false,
+                            btnOkText: "Ya",
+                            btnCancelText: "Tidak",
+                            btnCancelOnPress: () {
+                              return;
+                            },
+                            btnOkOnPress: () {
+                              SelectDialog.showModal<String>(
+                                context,
+                                label: "List Produk Kategori",
+                                selectedValue: produkKategoriSelected,
+                                items: produkKategoriData == null
+                                    ? []
+                                    : produkKategoriData
+                                        .map((ProdukKategoriData item) {
+                                        return item.nama;
+                                      }).toList(),
+                                onChange: (String selected) async {
+                                  setState(() {
+                                    produkKategoriSelected = selected;
+                                  });
+                                  futureProdukRes(
+                                          invoiceId:
+                                              c.isEdit ? c.invoiceId : null)
+                                      .then((value) {
+                                    setState(() {
+                                      produkData = value.data;
+                                      produkDataOriginal = value.data;
+                                      isReset = true;
+                                      isBySearch = false;
+                                    });
+                                    c.setResetProduk(true);
+                                  });
+                                },
+                                constraints: BoxConstraints(
+                                    maxHeight: 400, maxWidth: 400),
+                              );
+                            },
+                          ).show();
+                        } else {
+                          SelectDialog.showModal<String>(
+                            context,
+                            label: "List Produk Kategori",
+                            selectedValue: produkKategoriSelected,
+                            items: produkKategoriData == null
+                                ? []
+                                : produkKategoriData
+                                    .map((ProdukKategoriData item) {
+                                    return item.nama;
+                                  }).toList(),
+                            onChange: (String selected) async {
                               setState(() {
-                                produkData = value.data;
-                                produkDataOriginal = value.data;
-                                isReset = true;
+                                produkKategoriSelected = selected;
                               });
-                            });
-                          },
-                          constraints:
-                              BoxConstraints(maxHeight: 400, maxWidth: 400),
-                        );
+                              futureProdukRes(
+                                      invoiceId: c.isEdit ? c.invoiceId : null)
+                                  .then((value) {
+                                setState(() {
+                                  produkData = value.data;
+                                  produkDataOriginal = value.data;
+                                  isReset = true;
+                                  isBySearch = false;
+                                });
+                                c.setResetProduk(true);
+                              });
+                            },
+                            constraints:
+                                BoxConstraints(maxHeight: 400, maxWidth: 400),
+                          );
+                        }
                       },
                       child: Row(
                         children: [

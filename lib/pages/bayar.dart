@@ -45,6 +45,7 @@ class _BayarPageState extends State<BayarPage> {
   bool isLunas = false;
   bool isPublish = false;
   bool isPpn = false;
+  bool isSendWa = false;
 
   final TextEditingController _textEditingController = TextEditingController();
   final TextEditingController _textDiskonController =
@@ -1032,100 +1033,155 @@ class _BayarPageState extends State<BayarPage> {
                                   ),
                                 );
                                 _noWaController.text = value.data.noTelp;
-                                c.cancelEdit();
-                                c.setSalesman("");
-                                c.setPelanggan("");
-                                c.setStatusBayar("");
-                                c.setReload(true);
-
                                 showDialog(
                                     barrierDismissible: false,
                                     context: context,
                                     builder: (BuildContext context) {
-                                      return WillPopScope(
-                                        onWillPop: () async => false,
-                                        child: AlertDialog(
-                                          scrollable: true,
-                                          title: Text("Konfirmasi Whatsapp"),
-                                          // content: Text(
-                                          //     "Apakah anda yakin ingin mengirim invoice ini?"),
-                                          // Input no Whatsapp
-                                          content: SizedBox(
-                                            height: 100,
-                                            child: Column(
-                                              children: [
-                                                TextFormField(
-                                                  controller: _noWaController,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration: InputDecoration(
-                                                    hintText: "No Whatsapp",
-                                                    border:
-                                                        OutlineInputBorder(),
+                                      return StatefulBuilder(
+                                          builder: (context, updateState) {
+                                        return WillPopScope(
+                                          onWillPop: () async => false,
+                                          child: AlertDialog(
+                                            scrollable: true,
+                                            title: Text("Konfirmasi Whatsapp"),
+                                            // content: Text(
+                                            //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                            // Input no Whatsapp
+                                            content: SizedBox(
+                                              height: 100,
+                                              child: Column(
+                                                children: [
+                                                  TextFormField(
+                                                    controller: _noWaController,
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                    decoration: InputDecoration(
+                                                      hintText: "No Whatsapp",
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  c.setActiveBayar(false);
+                                                  c.cancelEdit();
+                                                  c.setSalesman("");
+                                                  c.setPelanggan("");
+                                                  c.setStatusBayar("");
+                                                  Navigator.pop(
+                                                      context, 'redirect');
+                                                },
+                                                child: Text("Batal"),
+                                              ),
+                                              TextButton(
+                                                onPressed: isSendWa
+                                                    ? null
+                                                    : () async {
+                                                        FocusManager.instance
+                                                            .primaryFocus
+                                                            .unfocus();
+                                                        updateState(() {
+                                                          isSendWa = true;
+                                                        });
+                                                        // await EasyLoading.show(
+                                                        //   status: 'loading...',
+                                                        //   maskType:
+                                                        //       EasyLoadingMaskType
+                                                        //           .black,
+                                                        //   dismissOnTap: false,
+                                                        // );
+                                                        await futureSendWa(value
+                                                                .data.invoiceId)
+                                                            .then((value) {
+                                                          if (value.success) {
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                                    SnackBar(
+                                                              content: Text(
+                                                                  "Invoice berhasil dikirim"),
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                            ));
+                                                          } else {
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                                    SnackBar(
+                                                              content: Text(
+                                                                  "Invoice gagal dikirim"),
+                                                              backgroundColor:
+                                                                  Colors.red,
+                                                            ));
+                                                          }
+                                                          // if (EasyLoading
+                                                          //     .isShow) {
+                                                          //   EasyLoading
+                                                          //       .dismiss();
+                                                          // }
+                                                          c.cancelEdit();
+                                                          c.setSalesman("");
+                                                          c.setPelanggan("");
+                                                          c.setStatusBayar("");
+                                                          c.setReload(true);
+                                                          updateState(() {
+                                                            isSendWa = false;
+                                                          });
+                                                          Navigator.pop(
+                                                              context);
+                                                        }).onError((error,
+                                                                stackTrace) {
+                                                          print(error);
+                                                          print(stackTrace);
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                                  SnackBar(
+                                                            content: Text(
+                                                                "Invoice gagal dikirim"),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ));
+                                                          // if (EasyLoading
+                                                          //     .isShow) {
+                                                          //   EasyLoading
+                                                          //       .dismiss();
+                                                          // }
+                                                          updateState(() {
+                                                            isSendWa = false;
+                                                          });
+                                                          Navigator.pop(
+                                                              context);
+                                                        });
+                                                        // if (EasyLoading
+                                                        //     .isShow) {
+                                                        //   await EasyLoading
+                                                        //       .dismiss();
+                                                        // }
+                                                        c.setActiveBayar(false);
+                                                        Navigator.pop(
+                                                            context, 'success');
+                                                      },
+                                                child: isSendWa
+                                                    ? SizedBox(
+                                                        height: 20,
+                                                        width: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      )
+                                                    : Text("Kirim"),
+                                              ),
+                                            ],
                                           ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                c.setActiveBayar(false);
-                                                c.cancelEdit();
-                                                c.setSalesman("");
-                                                c.setPelanggan("");
-                                                c.setStatusBayar("");
-                                                Navigator.pop(
-                                                    context, 'redirect');
-                                              },
-                                              child: Text("Batal"),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                await futureSendWa(
-                                                        value.data.invoiceId)
-                                                    .then((value) {
-                                                  if (value.success) {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                      content: Text(
-                                                          "Invoice berhasil dikirim"),
-                                                      backgroundColor:
-                                                          Colors.green,
-                                                    ));
-                                                  } else {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                      content: Text(
-                                                          "Invoice gagal dikirim"),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                    ));
-                                                  }
-                                                  Navigator.pop(context);
-                                                }).onError((error, stackTrace) {
-                                                  print(error);
-                                                  print(stackTrace);
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(SnackBar(
-                                                    content: Text(
-                                                        "Invoice gagal dikirim"),
-                                                    backgroundColor: Colors.red,
-                                                  ));
-                                                  Navigator.pop(context);
-                                                });
-                                                c.setActiveBayar(false);
-                                                Navigator.pop(
-                                                    context, 'success');
-                                              },
-                                              child: Text("Kirim"),
-                                            ),
-                                          ],
-                                        ),
-                                      );
+                                        );
+                                      });
                                     });
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1270,110 +1326,151 @@ class _BayarPageState extends State<BayarPage> {
                                   ),
                                 );
                                 _noWaController.text = value.data.noTelp;
-                                c.cancelEdit();
-                                c.setSalesman("");
-                                c.setPelanggan("");
-                                c.setStatusBayar("");
-                                c.setReload(true);
 
                                 showDialog(
                                     context: context,
                                     builder: (BuildContext context) {
-                                      return WillPopScope(
-                                        onWillPop: () async => false,
-                                        child: AlertDialog(
-                                          scrollable: true,
-                                          title: Text("Konfirmasi Whatsapp"),
-                                          // content: Text(
-                                          //     "Apakah anda yakin ingin mengirim invoice ini?"),
-                                          // Input no Whatsapp
-                                          content: SizedBox(
-                                            height: 100,
-                                            child: Column(
-                                              children: [
-                                                TextFormField(
-                                                  controller: _noWaController,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  decoration: InputDecoration(
-                                                    hintText: "No Whatsapp",
-                                                    border:
-                                                        OutlineInputBorder(),
+                                      return StatefulBuilder(
+                                          builder: (context, updateState) {
+                                        return WillPopScope(
+                                          onWillPop: () async => false,
+                                          child: AlertDialog(
+                                            scrollable: true,
+                                            title: Text("Konfirmasi Whatsapp"),
+                                            // content: Text(
+                                            //     "Apakah anda yakin ingin mengirim invoice ini?"),
+                                            // Input no Whatsapp
+                                            content: SizedBox(
+                                              height: 100,
+                                              child: Column(
+                                                children: [
+                                                  TextFormField(
+                                                    controller: _noWaController,
+                                                    keyboardType:
+                                                        TextInputType.number,
+                                                    decoration: InputDecoration(
+                                                      hintText: "No Whatsapp",
+                                                      border:
+                                                          OutlineInputBorder(),
+                                                    ),
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  c.setActiveBayar(false);
+                                                  Navigator.pop(
+                                                      context, 'redirect');
+                                                },
+                                                child: Text("Batal"),
+                                              ),
+                                              TextButton(
+                                                onPressed: isSendWa
+                                                    ? null
+                                                    : () async {
+                                                        // await EasyLoading.show(
+                                                        //   status: 'loading...',
+                                                        //   maskType:
+                                                        //       EasyLoadingMaskType.black,
+                                                        //   dismissOnTap: false,
+                                                        // );
+                                                        FocusManager.instance
+                                                            .primaryFocus
+                                                            .unfocus();
+                                                        updateState(() {
+                                                          isSendWa = true;
+                                                        });
+                                                        await futureSendWa(value
+                                                                .data.invoiceId)
+                                                            .then((value) {
+                                                          if (value.success) {
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                                    SnackBar(
+                                                              content: Text(
+                                                                  "Invoice berhasil dikirim"),
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                            ));
+                                                            c.cancelEdit();
+                                                            c.setSalesman("");
+                                                            c.setPelanggan("");
+                                                            c.setStatusBayar(
+                                                                "");
+                                                            c.setReload(true);
+                                                          } else {
+                                                            ScaffoldMessenger
+                                                                    .of(context)
+                                                                .showSnackBar(
+                                                                    SnackBar(
+                                                              content: Text(
+                                                                  "Invoice gagal dikirim"),
+                                                              backgroundColor:
+                                                                  Colors.red,
+                                                            ));
+                                                          }
+                                                          // if (EasyLoading
+                                                          //     .isShow) {
+                                                          //   EasyLoading
+                                                          //       .dismiss();
+                                                          // }
+                                                          updateState(() {
+                                                            isSendWa = false;
+                                                          });
+                                                          Navigator.pop(
+                                                              context);
+                                                        }).onError((error,
+                                                                stackTrace) {
+                                                          print(error);
+                                                          print(stackTrace);
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                                  SnackBar(
+                                                            content: Text(
+                                                                "Invoice gagal dikirim"),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ));
+                                                          // if (EasyLoading
+                                                          //     .isShow) {
+                                                          //   EasyLoading
+                                                          //       .dismiss();
+                                                          // }
+                                                          updateState(() {
+                                                            isSendWa = false;
+                                                          });
+                                                          Navigator.pop(
+                                                              context);
+                                                        });
+                                                        // if (EasyLoading
+                                                        //     .isShow) {
+                                                        //   await EasyLoading
+                                                        //       .dismiss();
+                                                        // }
+                                                        c.setActiveBayar(false);
+                                                        Navigator.pop(
+                                                            context, 'success');
+                                                      },
+                                                child: isSendWa
+                                                    ? SizedBox(
+                                                        height: 20,
+                                                        width: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                      )
+                                                    : Text("Kirim"),
+                                              ),
+                                            ],
                                           ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                c.setActiveBayar(false);
-                                                Navigator.pop(
-                                                    context, 'redirect');
-                                              },
-                                              child: Text("Batal"),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                await EasyLoading.show(
-                                                  status: 'loading...',
-                                                  maskType:
-                                                      EasyLoadingMaskType.black,
-                                                  dismissOnTap: false,
-                                                );
-                                                await futureSendWa(
-                                                        value.data.invoiceId)
-                                                    .then((value) {
-                                                  if (value.success) {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                      content: Text(
-                                                          "Invoice berhasil dikirim"),
-                                                      backgroundColor:
-                                                          Colors.green,
-                                                    ));
-                                                  } else {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(SnackBar(
-                                                      content: Text(
-                                                          "Invoice gagal dikirim"),
-                                                      backgroundColor:
-                                                          Colors.red,
-                                                    ));
-                                                  }
-                                                  if (EasyLoading.isShow) {
-                                                    EasyLoading.dismiss();
-                                                  }
-                                                  Navigator.pop(context);
-                                                }).onError((error, stackTrace) {
-                                                  print(error);
-                                                  print(stackTrace);
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(SnackBar(
-                                                    content: Text(
-                                                        "Invoice gagal dikirim"),
-                                                    backgroundColor: Colors.red,
-                                                  ));
-                                                  if (EasyLoading.isShow) {
-                                                    EasyLoading.dismiss();
-                                                  }
-                                                  Navigator.pop(context);
-                                                });
-                                                if (EasyLoading.isShow) {
-                                                  await EasyLoading.dismiss();
-                                                }
-                                                c.setActiveBayar(false);
-                                                Navigator.pop(
-                                                    context, 'success');
-                                              },
-                                              child: Text("Kirim"),
-                                            ),
-                                          ],
-                                        ),
-                                      );
+                                        );
+                                      });
                                     });
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
