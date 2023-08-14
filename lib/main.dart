@@ -230,8 +230,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<ProdukRes> futureProdukRes({String invoiceId}) async {
     String url = '${API_URL}PosApps/Produk';
-    print(url);
-
     String gudangId = "";
     // if (MODE != "api") {
     //   await dbHelper.gudangDataByNama(dropdownvalue).then((value) {
@@ -243,12 +241,14 @@ class _MyHomePageState extends State<MyHomePage> {
     Map<String, dynamic> body = {
       // "GudangId": "",
       "PelangganId": "",
-      "SubKategoriId": produkKategoriSelected == "No value selected"
+      "SubKategoriId": produkKategoriSelected == "No value selected" ||
+              produkKategoriSelected == ""
           ? ""
           : produkKategoriDataMap[produkKategoriSelected].id,
       "InvoiceId": invoiceId ?? "",
     };
     print(body);
+    print(url);
     final response = await http.post(
       Uri.parse(url),
       body: body,
@@ -423,7 +423,7 @@ class _MyHomePageState extends State<MyHomePage> {
       print(stackTrace);
     });
     futureProdukKategoriRes().then((value) async {
-      if (value != null) {
+      if (value.data != null) {
         if (MODE != "api") {
           for (ProdukKategoriData produkKategori in value.data) {
             await dbHelper.insertProdukKategori(produkKategori);
@@ -476,6 +476,8 @@ class _MyHomePageState extends State<MyHomePage> {
             });
           });
         }
+      } else {
+        throw Exception("Failed to load data");
       }
     }).catchError((error) {
       print("ERROR: $error");
@@ -728,6 +730,12 @@ class _MyHomePageState extends State<MyHomePage> {
                                 context,
                                 label: "List Produk Kategori",
                                 selectedValue: produkKategoriSelected,
+                                searchBoxDecoration: InputDecoration(
+                                  hintText: "Cari Produk Kategori",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                ),
                                 items: produkKategoriData == null
                                     ? []
                                     : produkKategoriData
@@ -760,6 +768,12 @@ class _MyHomePageState extends State<MyHomePage> {
                           SelectDialog.showModal<String>(
                             context,
                             label: "List Produk Kategori",
+                            searchBoxDecoration: InputDecoration(
+                              hintText: "Cari Produk Kategori",
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
                             selectedValue: produkKategoriSelected,
                             items: produkKategoriData == null
                                 ? []
@@ -817,6 +831,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         SelectDialog.showModal<String>(
                           context,
                           label: "List User",
+                          searchBoxDecoration: InputDecoration(
+                            hintText: "Cari User",
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
                           selectedValue:
                               userName == null ? "Pilih User" : userSelected,
                           items: userData == null
@@ -881,6 +901,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                           SelectDialog.showModal<String>(
                                             context,
                                             label: "List Salesman",
+                                            searchBoxDecoration:
+                                                InputDecoration(
+                                              hintText: "Cari Salesman",
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                            ),
                                             selectedValue: salesmanSelected,
                                             items: salesmanData == null
                                                 ? []
@@ -1181,6 +1209,14 @@ class _MyHomePageState extends State<MyHomePage> {
                                           SelectDialog.showModal<String>(
                                             context,
                                             label: "List Salesman",
+                                            searchBoxDecoration:
+                                                InputDecoration(
+                                              hintText: "Cari Salesman",
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                            ),
                                             selectedValue:
                                                 salesmanFilterSelected,
                                             items: salesmanFilterData == null
@@ -1231,6 +1267,15 @@ class _MyHomePageState extends State<MyHomePage> {
                                           SelectDialog.showModal<String>(
                                             context,
                                             label: "List Status Pembayaran",
+                                            searchBoxDecoration:
+                                                InputDecoration(
+                                              hintText:
+                                                  "Cari Status Pembayaran",
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                            ),
                                             selectedValue:
                                                 statusPembayaranSelected,
                                             items: statusBayarData == null

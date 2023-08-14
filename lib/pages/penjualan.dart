@@ -186,6 +186,7 @@ class _PenjualanPageState extends State<PenjualanPage>
 
   List<SalesmanData> salesmanData;
   Map<String, SalesmanData> salesmanMap = {};
+  Map<String, SalesmanData> salesmanMapId = {};
   List<PelangganData> pelangganData;
   Map<String, PelangganData> pelangganMap = {};
   ListInvoice invoiceData;
@@ -1032,23 +1033,26 @@ class _PenjualanPageState extends State<PenjualanPage>
                 children: [
                   produkDipilihSet.isEmpty
                       ? Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.shopping_cart,
-                                size: 50,
-                                color: Colors.grey[300],
-                              ),
-                              SizedBox(height: 10.0),
-                              Text(
-                                "Keranjang Kosong",
-                                style: TextStyle(
-                                  fontSize: 16.0,
+                          child: AnimatedContainer(
+                            duration: Duration(milliseconds: 500),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.shopping_cart,
+                                  size: 50,
                                   color: Colors.grey[300],
                                 ),
-                              )
-                            ],
+                                SizedBox(height: 10.0),
+                                Text(
+                                  "Keranjang Kosong",
+                                  style: TextStyle(
+                                    fontSize: 16.0,
+                                    color: Colors.grey[300],
+                                  ),
+                                )
+                              ],
+                            ),
                           ),
                         )
                       : Expanded(
@@ -1336,6 +1340,12 @@ class _PenjualanPageState extends State<PenjualanPage>
                                   context,
                                   label: "List Salesman",
                                   selectedValue: salesmanSelected,
+                                  searchBoxDecoration: InputDecoration(
+                                    hintText: "Cari Salesman",
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(5),
+                                    ),
+                                  ),
                                   items: salesmanData == null
                                       ? []
                                       : salesmanData.map((SalesmanData item) {
@@ -1430,6 +1440,13 @@ class _PenjualanPageState extends State<PenjualanPage>
                                         context,
                                         label: "List Pelanggan",
                                         selectedValue: pelangganSelected,
+                                        searchBoxDecoration: InputDecoration(
+                                          hintText: "Cari Pelanggan",
+                                          border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                          ),
+                                        ),
                                         items: pelangganData == null
                                             ? []
                                             : pelangganData
@@ -1437,6 +1454,22 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                 return item.nama;
                                               }).toList(),
                                         onChange: (String selected) {
+                                          String salesmanId = "";
+                                          for (var element in pelangganData) {
+                                            if (element.nama ==
+                                                pelangganSelected) {
+                                              salesmanId = element.pegawaiId;
+                                            }
+                                          }
+                                          for (var element in salesmanData) {
+                                            if (element.id == salesmanId) {
+                                              print(element.id);
+                                              print(element.nama);
+                                              setState(() {
+                                                salesmanSelected = element.nama;
+                                              });
+                                            }
+                                          }
                                           setState(() {
                                             pelangganSelected = selected;
                                           });
