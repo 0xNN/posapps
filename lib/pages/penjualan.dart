@@ -23,7 +23,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timer_count_down/timer_controller.dart';
 import 'package:timer_count_down/timer_count_down.dart';
 import 'package:progress_dialog_null_safe/progress_dialog_null_safe.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 
 class CurrencyFormat {
   static String convertToIdr(dynamic number, int decimalDigit) {
