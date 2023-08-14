@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timer_count_down/timer_controller.dart';
 import 'package:timer_count_down/timer_count_down.dart';
 import 'package:progress_dialog_null_safe/progress_dialog_null_safe.dart';
+import 'package:animated_text_kit/animated_text_kit.dart';
 
 class CurrencyFormat {
   static String convertToIdr(dynamic number, int decimalDigit) {
@@ -62,6 +63,8 @@ class _PenjualanPageState extends State<PenjualanPage>
   DBHelper dbHelper = DBHelper();
   ProgressDialog pd = ProgressDialog(Get.context);
 
+  final GlobalKey<AnimatedListState> _key = GlobalKey();
+
   double total = 0;
   int _totalDiskon = 0;
 
@@ -70,6 +73,29 @@ class _PenjualanPageState extends State<PenjualanPage>
 
   List<ProdukData> produkDipilih = [];
   Set<ProdukData> produkDipilihSet = Set<ProdukData>();
+
+  void _addItem(ProdukData item) {
+    produkDipilihSet.add(item);
+    _key.currentState.insertItem(produkDipilihSet.length - 1);
+  }
+
+  void _removeItem(int index) {
+    var item = produkDipilihSet.elementAt(index);
+    _key.currentState.removeItem(
+      index,
+      (context, animation) => FadeTransition(
+        opacity: animation,
+        child: SizeTransition(
+          sizeFactor: animation,
+          child: ListTile(
+            title: Text(item.produk),
+            subtitle: Text(item.hargaJual),
+          ),
+        ),
+      ),
+    );
+    produkDipilihSet.remove(item);
+  }
 
   final Map<String, int> _subTotalPerItem = {};
 
@@ -145,14 +171,11 @@ class _PenjualanPageState extends State<PenjualanPage>
               : _diskonNominal[element.rowUniqueId].toString();
     }
 
-    int subTotal = _subTotalPerItem
-        .map((key, value) {
-          return MapEntry(key, value);
-        })
-        .values
-        .fold(0, (previousValue, element) {
-          return previousValue + element;
-        });
+    int subTotal = produkDipilih.map((e) {
+      return int.parse(e.hargaJual);
+    }).fold(0, (previousValue, element) {
+      return previousValue + element;
+    });
     print(subTotal);
     Map<String, dynamic> body = {
       "SalesmanId": salesmanMap[salesmanSelected].id,
@@ -249,17 +272,22 @@ class _PenjualanPageState extends State<PenjualanPage>
         produkDipilih,
         produkDipilihSet,
         // total,
-        _subTotalPerItem
-            .map((key, value) {
-              return MapEntry(key, value);
-            })
-            .values
-            .fold(
-              0,
-              (previousValue, element) {
-                return previousValue + element;
-              },
-            ),
+        // _subTotalPerItem
+        //     .map((key, value) {
+        //       return MapEntry(key, value);
+        //     })
+        //     .values
+        //     .fold(
+        //       0,
+        //       (previousValue, element) {
+        //         return previousValue + element;
+        //       },
+        //     ),
+        produkDipilih.map((e) {
+          return double.parse(e.hargaJual);
+        }).fold(0, (previousValue, element) {
+          return previousValue + element;
+        }),
         _totalDiskon,
         salesmanMap[salesmanSelected].id,
         pelangganMap[pelangganSelected].id,
@@ -663,124 +691,174 @@ class _PenjualanPageState extends State<PenjualanPage>
         children: [
           Expanded(
             flex: 2,
-            child: widget.produkDatas.isNotEmpty
-                ? Column(
-                    children: [
-                      isPause
-                          ? Container()
-                          : SizedBox(
-                              height: 30,
-                              child: Container(
-                                width: MediaQuery.of(context).size.width,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Data produk otomatis diperbarui dalam",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                      ),
+            child: AnimatedSwitcher(
+              duration: Duration(milliseconds: 500),
+              child: widget.produkDatas.isNotEmpty
+                  ? Column(
+                      children: [
+                        AnimatedSwitcher(
+                          duration: Duration(milliseconds: 500),
+                          child: isPause
+                              ? Container()
+                              : SizedBox(
+                                  height: 30,
+                                  child: Container(
+                                    width: MediaQuery.of(context).size.width,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
                                     ),
-                                    SizedBox(
-                                      width: 2,
-                                    ),
-                                    Countdown(
-                                      controller: _controller,
-                                      seconds: 10,
-                                      build: (_, double time) => Text(
-                                        time.toInt().toString() + " detik",
-                                        style: TextStyle(
-                                          fontSize: 12,
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          "Data produk otomatis diperbarui dalam",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                          ),
                                         ),
-                                      ),
-                                      interval: Duration(seconds: 1),
-                                      onFinished: () async {
-                                        // setState(() {
-                                        //   produkDipilih.clear();
-                                        //   produkDipilihSet.clear();
-                                        //   total = 0;
-                                        //   _subTotalPerItem.clear();
-                                        // });
-                                        c.setReload(true);
-                                        widget.reload();
-                                        // _controller.restart();
-                                      },
+                                        SizedBox(
+                                          width: 2,
+                                        ),
+                                        Countdown(
+                                          controller: _controller,
+                                          seconds: 10,
+                                          build: (_, double time) => Text(
+                                            time.toInt().toString() + " detik",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          interval: Duration(seconds: 1),
+                                          onFinished: () async {
+                                            // setState(() {
+                                            //   produkDipilih.clear();
+                                            //   produkDipilihSet.clear();
+                                            //   total = 0;
+                                            //   _subTotalPerItem.clear();
+                                            // });
+                                            c.setReload(true);
+                                            widget.reload();
+                                            // _controller.restart();
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                      Expanded(
-                        child: AlignedGridView.count(
-                          crossAxisCount: 1,
-                          mainAxisSpacing: 0.0,
-                          crossAxisSpacing: 0.0,
-                          itemCount: widget.produkDatas.length,
-                          itemBuilder: (context, index) {
-                            // var name = Namefully(widget.produkDatas[index].produk);
-                            // String initialName = name.initials().join();
-                            return InkWell(
-                              onTap: () {
-                                _controller.pause();
-                                c.setReload(false);
-                                c.setResetProduk(false);
-                                setState(() {
-                                  isPause = true;
-                                });
-                                int stok =
-                                    int.parse(widget.produkDatas[index].stok);
-                                if (stok > 0) {
-                                  // cek apakah produk di list melebihi stok
-                                  int count = 0;
-                                  for (ProdukData data in produkDipilih) {
-                                    if (data.rowUniqueId ==
-                                        widget.produkDatas[index].rowUniqueId) {
-                                      count++;
-                                    }
-                                  }
-                                  if (count < stok) {
-                                    setState(() {
-                                      produkDipilih
-                                          .add(widget.produkDatas[index]);
-                                      // Cek if exists then add to produkDipilihSet
-                                      produkDipilihSet.where((element) {
-                                        if (element.rowUniqueId ==
-                                                widget.produkDatas[index]
-                                                    .rowUniqueId &&
-                                            element.produkId ==
-                                                widget.produkDatas[index]
-                                                    .produkId) {
-                                          return true;
-                                        } else {
-                                          return false;
-                                        }
-                                      }).isEmpty
-                                          ? produkDipilihSet
-                                              .add(widget.produkDatas[index])
-                                          : null;
-                                      // produkDipilihSet
-                                      //     .add(widget.produkDatas[index]);
-                                      total += double.parse(
-                                          widget.produkDatas[index].hargaJual);
-                                      for (var e in produkDipilihSet) {
-                                        int produkLength = produkDipilih
-                                            .where((element) =>
-                                                element.produkId ==
-                                                    e.produkId &&
-                                                element.rowUniqueId ==
-                                                    e.rowUniqueId)
-                                            .toList()
-                                            .length;
-                                        _subTotalPerItem[e.rowUniqueId] =
-                                            produkLength *
-                                                int.parse(e.hargaJual);
-                                        print(_subTotalPerItem[e.rowUniqueId]);
+                        ),
+                        Expanded(
+                          child: AlignedGridView.count(
+                            crossAxisCount: 1,
+                            mainAxisSpacing: 0.0,
+                            crossAxisSpacing: 0.0,
+                            itemCount: widget.produkDatas.length,
+                            itemBuilder: (context, index) {
+                              // var name = Namefully(widget.produkDatas[index].produk);
+                              // String initialName = name.initials().join();
+                              return InkWell(
+                                onTap: () {
+                                  _controller.pause();
+                                  c.setReload(false);
+                                  c.setResetProduk(false);
+                                  setState(() {
+                                    isPause = true;
+                                  });
+                                  int stok =
+                                      int.parse(widget.produkDatas[index].stok);
+                                  if (stok > 0) {
+                                    // cek apakah produk di list melebihi stok
+                                    int count = 0;
+                                    for (ProdukData data in produkDipilih) {
+                                      if (data.rowUniqueId ==
+                                          widget
+                                              .produkDatas[index].rowUniqueId) {
+                                        count++;
                                       }
-                                    });
+                                    }
+                                    if (count < stok) {
+                                      setState(() {
+                                        produkDipilih
+                                            .add(widget.produkDatas[index]);
+                                        // Cek if exists then add to produkDipilihSet
+                                        bool isEmpty =
+                                            produkDipilihSet.where((element) {
+                                          if (element.rowUniqueId ==
+                                                  widget.produkDatas[index]
+                                                      .rowUniqueId &&
+                                              element.produkId ==
+                                                  widget.produkDatas[index]
+                                                      .produkId) {
+                                            return true;
+                                          } else {
+                                            return false;
+                                          }
+                                        }).isEmpty;
+                                        if (isEmpty) {
+                                          produkDipilihSet
+                                              .add(widget.produkDatas[index]);
+                                          if (_key.currentState != null) {
+                                            _key.currentState.insertItem(0,
+                                                duration: Duration(
+                                                    milliseconds: 500));
+                                          }
+                                        }
+                                        // ? produkDipilihSet
+                                        //     .add(widget.produkDatas[index])
+                                        // : null;
+                                        total += double.parse(widget
+                                            .produkDatas[index].hargaJual);
+                                        for (var e in produkDipilihSet) {
+                                          int produkLength = produkDipilih
+                                              .where((element) =>
+                                                  element.produkId ==
+                                                      e.produkId &&
+                                                  element.rowUniqueId ==
+                                                      e.rowUniqueId)
+                                              .toList()
+                                              .length;
+                                          _subTotalPerItem[e.rowUniqueId] =
+                                              produkLength *
+                                                  int.parse(e.hargaJual);
+                                        }
+                                        // check if !exists in produkDipilihSet then set animation
+                                        // bool isEmpty =
+                                        //     produkDipilihSet.where((element) {
+                                        //   if (element.rowUniqueId ==
+                                        //           widget.produkDatas[index]
+                                        //               .rowUniqueId &&
+                                        //       element.produkId ==
+                                        //           widget.produkDatas[index]
+                                        //               .produkId) {
+                                        //     return true;
+                                        //   } else {
+                                        //     return false;
+                                        //   }
+                                        // }).isEmpty;
+                                        // if (isEmpty) {}
+                                      });
+                                    } else {
+                                      showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return AlertDialog(
+                                              title: Text("Informasi Stok"),
+                                              content: Text(
+                                                "Stok produk tidak boleh lebih dari $stok",
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: Text("OK"),
+                                                ),
+                                              ],
+                                            );
+                                          });
+                                    }
                                   } else {
                                     showDialog(
                                         context: context,
@@ -788,7 +866,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                                           return AlertDialog(
                                             title: Text("Informasi Stok"),
                                             content: Text(
-                                              "Stok produk tidak boleh lebih dari $stok",
+                                              "Stok produk tidak tersedia",
                                             ),
                                             actions: [
                                               TextButton(
@@ -801,219 +879,185 @@ class _PenjualanPageState extends State<PenjualanPage>
                                           );
                                         });
                                   }
-                                  // setState(() {
-                                  //   produkDipilih.add(widget.produkDatas[index]);
-                                  //   produkDipilihSet.add(widget.produkDatas[index]);
-                                  //   total += double.parse(
-                                  //       widget.produkDatas[index].hargaJual);
-                                  // });
-                                } else {
-                                  showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        return AlertDialog(
-                                          title: Text("Informasi Stok"),
-                                          content: Text(
-                                            "Stok produk tidak tersedia",
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                              },
-                                              child: Text("OK"),
-                                            ),
-                                          ],
-                                        );
-                                      });
-                                }
-                                print("PRODUK DIPILIH SET");
-                                print(produkDipilihSet.length);
-                                print(produkDipilihSet);
-                                for (var element in produkDipilihSet) {
-                                  print(element.produk +
-                                      " " +
-                                      element.rowUniqueId +
-                                      " " +
-                                      element.produkId);
-                                }
-                              },
-                              child: AnimatedContainer(
-                                duration: Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                                height: 30,
-                                margin: EdgeInsets.all(2.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(4.0),
-                                  border: Border.all(
-                                    color: Colors.blue[200],
-                                    width: .5,
-                                  ),
-                                  // gradient: LinearGradient(
-                                  //   begin: Alignment.topLeft,
-                                  //   end: Alignment.bottomRight,
-                                  //   colors: [
-                                  //     Colors.white,
-                                  //     Colors.blue[50],
-                                  //   ],
-                                  // ),
-                                  // boxShadow: [
-                                  //   BoxShadow(
-                                  //     color: Colors.blue.withOpacity(0.2),
-                                  //     spreadRadius: 1,
-                                  //     blurRadius: 2,
-                                  //     offset:
-                                  //         Offset(0, 1), // changes position of shadow
-                                  //   ),
-                                  // ],
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          flex: 2,
-                                          child: Container(
-                                            padding: EdgeInsets.only(
-                                              top: 8.0,
-                                              left: 8.0,
-                                              bottom: 8.0,
-                                              right: 14.0,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Text(
-                                                  widget
-                                                      .produkDatas[index].produk
-                                                      .toUpperCase(),
-                                                  textAlign: TextAlign.start,
-                                                  style: TextStyle(
-                                                    fontSize: 12.0,
-                                                    color: Colors.blue,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                SizedBox(width: 4.0),
-                                                Text(
-                                                  "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    fontSize: 12.0,
-                                                    color: Colors.indigo[400],
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                SizedBox(width: 4.0),
-                                                Text(
-                                                  "Stok : ${widget.produkDatas[index].stok}",
-                                                  textAlign: TextAlign.center,
-                                                  softWrap: true,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 12.0,
-                                                    color: Colors.indigo[400],
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        // Container(
-                                        //   // height: 20,
-                                        //   width: double.infinity,
-                                        //   decoration: BoxDecoration(
-                                        //     color: Colors.indigo[50],
-                                        //     borderRadius: BorderRadius.only(
-                                        //         // topRight: Radius.circular(4.0),
-                                        //         ),
-                                        //   ),
-                                        //   padding: EdgeInsets.all(4.0),
-                                        //   child: Text(
-                                        //     "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
-                                        //     textAlign: TextAlign.center,
-                                        //     style: TextStyle(
-                                        //       fontSize: 12.0,
-                                        //       color: Colors.indigo[400],
-                                        //       fontWeight: FontWeight.bold,
-                                        //     ),
-                                        //   ),
-                                        // ),
-                                        // Container(
-                                        //   width: double.infinity,
-                                        //   decoration: BoxDecoration(
-                                        //     color: Colors.blue.shade200,
-                                        //     borderRadius: BorderRadius.only(
-                                        //       bottomLeft: Radius.circular(8.0),
-                                        //       bottomRight: Radius.circular(8.0),
-                                        //     ),
-                                        //   ),
-                                        //   padding: EdgeInsets.all(4.0),
-                                        //   child: Column(
-                                        //     crossAxisAlignment:
-                                        //         CrossAxisAlignment.center,
-                                        //     mainAxisAlignment:
-                                        //         MainAxisAlignment.center,
-                                        //     children: [
-                                        //       Text(
-                                        //         "Stok : ${widget.produkDatas[index].stok}",
-                                        //         textAlign: TextAlign.center,
-                                        //         softWrap: true,
-                                        //         overflow: TextOverflow.ellipsis,
-                                        //         style: TextStyle(
-                                        //           fontSize: 12.0,
-                                        //           color: Colors.white,
-                                        //           fontWeight: FontWeight.bold,
-                                        //         ),
-                                        //       ),
-                                        //     ],
-                                        //   ),
-                                        // ),
-                                      ],
+                                },
+                                child: Container(
+                                  height: 30,
+                                  margin: EdgeInsets.all(2.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4.0),
+                                    border: Border.all(
+                                      color: Colors.blue[200],
+                                      width: .5,
                                     ),
-                                    Positioned(
-                                      top: 0,
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        height: 16,
-                                        width: 16,
-                                        decoration: BoxDecoration(
-                                          color: Colors.indigo[400],
-                                          borderRadius: BorderRadius.only(
-                                            topRight: Radius.circular(4.0),
-                                            bottomRight: Radius.circular(4.0),
+                                    // gradient: LinearGradient(
+                                    //   begin: Alignment.topLeft,
+                                    //   end: Alignment.bottomRight,
+                                    //   colors: [
+                                    //     Colors.white,
+                                    //     Colors.blue[50],
+                                    //   ],
+                                    // ),
+                                    // boxShadow: [
+                                    //   BoxShadow(
+                                    //     color: Colors.blue.withOpacity(0.2),
+                                    //     spreadRadius: 1,
+                                    //     blurRadius: 2,
+                                    //     offset:
+                                    //         Offset(0, 1), // changes position of shadow
+                                    //   ),
+                                    // ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            flex: 2,
+                                            child: Container(
+                                              padding: EdgeInsets.only(
+                                                top: 8.0,
+                                                left: 8.0,
+                                                bottom: 8.0,
+                                                right: 14.0,
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Text(
+                                                    widget.produkDatas[index]
+                                                        .produk
+                                                        .toUpperCase(),
+                                                    textAlign: TextAlign.start,
+                                                    style: TextStyle(
+                                                      fontSize: 12.0,
+                                                      color: Colors.blue,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 4.0),
+                                                  Text(
+                                                    "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontSize: 12.0,
+                                                      color: Colors.indigo[400],
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 4.0),
+                                                  Text(
+                                                    "Stok : ${widget.produkDatas[index].stok}",
+                                                    textAlign: TextAlign.center,
+                                                    softWrap: true,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 12.0,
+                                                      color: Colors.indigo[400],
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        child: Icon(
-                                          Icons.add,
-                                          color: Colors.white,
-                                          size: 10,
+                                          // Container(
+                                          //   // height: 20,
+                                          //   width: double.infinity,
+                                          //   decoration: BoxDecoration(
+                                          //     color: Colors.indigo[50],
+                                          //     borderRadius: BorderRadius.only(
+                                          //         // topRight: Radius.circular(4.0),
+                                          //         ),
+                                          //   ),
+                                          //   padding: EdgeInsets.all(4.0),
+                                          //   child: Text(
+                                          //     "S/N : ${widget.produkDatas[index].noSerial ?? "-"}",
+                                          //     textAlign: TextAlign.center,
+                                          //     style: TextStyle(
+                                          //       fontSize: 12.0,
+                                          //       color: Colors.indigo[400],
+                                          //       fontWeight: FontWeight.bold,
+                                          //     ),
+                                          //   ),
+                                          // ),
+                                          // Container(
+                                          //   width: double.infinity,
+                                          //   decoration: BoxDecoration(
+                                          //     color: Colors.blue.shade200,
+                                          //     borderRadius: BorderRadius.only(
+                                          //       bottomLeft: Radius.circular(8.0),
+                                          //       bottomRight: Radius.circular(8.0),
+                                          //     ),
+                                          //   ),
+                                          //   padding: EdgeInsets.all(4.0),
+                                          //   child: Column(
+                                          //     crossAxisAlignment:
+                                          //         CrossAxisAlignment.center,
+                                          //     mainAxisAlignment:
+                                          //         MainAxisAlignment.center,
+                                          //     children: [
+                                          //       Text(
+                                          //         "Stok : ${widget.produkDatas[index].stok}",
+                                          //         textAlign: TextAlign.center,
+                                          //         softWrap: true,
+                                          //         overflow: TextOverflow.ellipsis,
+                                          //         style: TextStyle(
+                                          //           fontSize: 12.0,
+                                          //           color: Colors.white,
+                                          //           fontWeight: FontWeight.bold,
+                                          //         ),
+                                          //       ),
+                                          //     ],
+                                          //   ),
+                                          // ),
+                                        ],
+                                      ),
+                                      Positioned(
+                                        top: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          height: 16,
+                                          width: 16,
+                                          decoration: BoxDecoration(
+                                            color: Colors.indigo[400],
+                                            borderRadius: BorderRadius.only(
+                                              topRight: Radius.circular(4.0),
+                                              bottomRight: Radius.circular(4.0),
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.add,
+                                            color: Colors.white,
+                                            size: 10,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  : SizedBox(
+                      child: Center(
+                        child: Image.asset(
+                          "images/no-data-found.png",
+                          width: 300,
+                          height: 300,
                         ),
                       ),
-                    ],
-                  )
-                : SizedBox(
-                    child: Center(
-                      child: Image.asset(
-                        "images/no-data-found.png",
-                        width: 300,
-                        height: 300,
-                      ),
                     ),
-                  ),
+            ),
           ),
           Expanded(
             child: Container(
@@ -1031,188 +1075,174 @@ class _PenjualanPageState extends State<PenjualanPage>
                 // crossAxisAlignment: CrossAxisAlignment.center,
                 // mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  produkDipilihSet.isEmpty
-                      ? Expanded(
-                          child: AnimatedContainer(
-                            duration: Duration(milliseconds: 500),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.shopping_cart,
-                                  size: 50,
-                                  color: Colors.grey[300],
-                                ),
-                                SizedBox(height: 10.0),
-                                Text(
-                                  "Keranjang Kosong",
-                                  style: TextStyle(
-                                    fontSize: 16.0,
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: Duration(milliseconds: 500),
+                      child: produkDipilihSet.isEmpty
+                          ? AnimatedContainer(
+                              duration: Duration(milliseconds: 500),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.shopping_cart,
+                                    size: 50,
                                     color: Colors.grey[300],
                                   ),
-                                )
-                              ],
-                            ),
-                          ),
-                        )
-                      : Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: ListView.builder(
-                              itemCount: produkDipilihSet.length,
-                              itemBuilder: (context, index) {
-                                int produkLength = produkDipilih
-                                    .where((element) =>
-                                        element.produkId ==
-                                            produkDipilihSet
-                                                .elementAt(index)
-                                                .produkId &&
-                                        element.rowUniqueId ==
-                                            produkDipilihSet
-                                                .elementAt(index)
-                                                .rowUniqueId)
-                                    .toList()
-                                    .length;
-                                return AnimatedContainer(
-                                    duration: Duration(milliseconds: 100),
-                                    curve: Curves.easeInOut,
-                                    margin: EdgeInsets.only(bottom: 4.0),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(4.0),
-                                      border: Border.all(
-                                        color: Colors.grey[300],
-                                        width: 1.0,
-                                      ),
+                                  SizedBox(height: 10.0),
+                                  Text(
+                                    "Keranjang Kosong",
+                                    style: TextStyle(
+                                      fontSize: 16.0,
+                                      color: Colors.grey[300],
                                     ),
-                                    child: ListTile(
-                                      dense: true,
-                                      isThreeLine: false,
-                                      title: Text(
-                                        produkDipilihSet
-                                            .elementAt(index)
-                                            .produk,
-                                        style: TextStyle(
-                                          fontSize: 14.0,
-                                          color: Colors.blue.shade800,
-                                          fontWeight: FontWeight.bold,
+                                  )
+                                ],
+                              ),
+                            )
+                          : Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: AnimatedList(
+                                key: _key,
+                                initialItemCount: produkDipilihSet.length,
+                                itemBuilder: (context, index, animation) {
+                                  int produkLength = produkDipilih
+                                      .where((element) =>
+                                          element.produkId ==
+                                              produkDipilihSet
+                                                  .elementAt(index)
+                                                  .produkId &&
+                                          element.rowUniqueId ==
+                                              produkDipilihSet
+                                                  .elementAt(index)
+                                                  .rowUniqueId)
+                                      .toList()
+                                      .length;
+                                  return SizeTransition(
+                                    key: UniqueKey(),
+                                    sizeFactor: animation,
+                                    child: Container(
+                                      margin: EdgeInsets.only(bottom: 4.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius:
+                                            BorderRadius.circular(4.0),
+                                        border: Border.all(
+                                          color: Colors.grey[200],
+                                          width: 1.0,
                                         ),
                                       ),
-                                      subtitle: Column(
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Text(
-                                                "$produkLength",
-                                                style: TextStyle(
-                                                  fontSize: 12.0,
-                                                  color: Colors.pink,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              Text(
-                                                " x " +
-                                                    CurrencyFormat.convertToIdr(
-                                                        int.parse(
-                                                            produkDipilihSet
-                                                                .elementAt(
-                                                                    index)
-                                                                .hargaJual),
-                                                        0),
-                                                style: TextStyle(
-                                                  fontSize: 12.0,
-                                                  color: Colors.grey[600],
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              // total
-                                              produkDipilihSet
-                                                      .elementAt(index)
-                                                      .hargaJual
-                                                      .isEmpty
-                                                  ? Container()
-                                                  : Text(
-                                                      " = " +
-                                                          // CurrencyFormat.convertToIdr(
-                                                          //     (int.parse(produkDipilihSet
-                                                          //                 .elementAt(
-                                                          //                     index)
-                                                          //                 .hargaJual) -
-                                                          //             _diskonNominal[
-                                                          //                 produkDipilihSet
-                                                          //                     .elementAt(
-                                                          //                         index)
-                                                          //                     .rowUniqueId]) *
-                                                          //         produkLength,
-                                                          //     0),
-
-                                                          CurrencyFormat.convertToIdr(
-                                                              produkLength *
-                                                                  int.parse(produkDipilihSet
-                                                                      .elementAt(
-                                                                          index)
-                                                                      .hargaJual),
-                                                              0),
-                                                      style: TextStyle(
-                                                        fontSize: 12.0,
-                                                        color: Colors
-                                                            .blue.shade800,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    )
-                                            ],
+                                      child: ListTile(
+                                        dense: true,
+                                        isThreeLine: false,
+                                        title: Text(
+                                          produkDipilihSet
+                                              .elementAt(index)
+                                              .produk,
+                                          style: TextStyle(
+                                            fontSize: 14.0,
+                                            color: Colors.blue.shade800,
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                        ],
-                                      ),
-                                      trailing: InkWell(
-                                        onTap: () {
-                                          setState(() {
-                                            total -= double.parse(
+                                        ),
+                                        subtitle: Column(
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  "$produkLength",
+                                                  style: TextStyle(
+                                                    fontSize: 12.0,
+                                                    color: Colors.pink,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                // DefaultTextStyle(
+                                                //   style: TextStyle(
+                                                //     fontSize: 12.0,
+                                                //     color: Colors.pink,
+                                                //     fontWeight: FontWeight.w600,
+                                                //   ),
+                                                //   child: AnimatedTextKit(
+                                                //     key: UniqueKey(),
+                                                //     animatedTexts: [
+                                                //       FadeAnimatedText(
+                                                //         "$produkLength",
+                                                //         duration: Duration(
+                                                //             milliseconds: 500),
+                                                //       ),
+                                                //     ],
+                                                //     repeatForever: true,
+                                                //     isRepeatingAnimation: true,
+                                                //     pause: Duration(
+                                                //         milliseconds: 500),
+                                                //     totalRepeatCount: 1,
+                                                //   ),
+                                                // ),
+                                                Text(
+                                                  " x " +
+                                                      CurrencyFormat.convertToIdr(
+                                                          int.parse(
+                                                              produkDipilihSet
+                                                                  .elementAt(
+                                                                      index)
+                                                                  .hargaJual),
+                                                          0),
+                                                  style: TextStyle(
+                                                    fontSize: 12.0,
+                                                    color: Colors.grey[600],
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                // total
                                                 produkDipilihSet
-                                                    .elementAt(index)
-                                                    .hargaJual);
-                                            List<ProdukData> produkLength =
-                                                produkDipilih
-                                                    .where((element) =>
-                                                        element.produkId ==
-                                                            produkDipilihSet
-                                                                .elementAt(
-                                                                    index)
-                                                                .produkId &&
-                                                        element.rowUniqueId ==
-                                                            produkDipilihSet
-                                                                .elementAt(
-                                                                    index)
-                                                                .rowUniqueId)
-                                                    .toList();
-                                            if (produkLength.length == 1) {
-                                              print("MASUK == 1");
-                                              if (_diskonNominal[produkDipilih
-                                                      .elementAt(index)
-                                                      .rowUniqueId] !=
-                                                  null) {
-                                                _totalDiskon -= _diskonNominal[
-                                                    produkDipilih
                                                         .elementAt(index)
-                                                        .rowUniqueId];
-                                              } else {
-                                                _totalDiskon -= 0;
-                                              }
-                                              _diskonNominal[produkDipilihSet
-                                                  .elementAt(index)
-                                                  .rowUniqueId] = 0;
-                                              _diskonPersen[produkDipilihSet
-                                                  .elementAt(index)
-                                                  .rowUniqueId] = 0;
-                                              // _controllers[produkDipilihSet
-                                              //         .elementAt(index)
-                                              //         .rowUniqueId]
-                                              //     .value = TextEditingValue(
-                                              //   text: "",
-                                              // );
+                                                        .hargaJual
+                                                        .isEmpty
+                                                    ? Container()
+                                                    : Text(
+                                                        " = " +
+                                                            // CurrencyFormat.convertToIdr(
+                                                            //     (int.parse(produkDipilihSet
+                                                            //                 .elementAt(
+                                                            //                     index)
+                                                            //                 .hargaJual) -
+                                                            //             _diskonNominal[
+                                                            //                 produkDipilihSet
+                                                            //                     .elementAt(
+                                                            //                         index)
+                                                            //                     .rowUniqueId]) *
+                                                            //         produkLength,
+                                                            //     0),
 
-                                              int produkLengthNew =
+                                                            CurrencyFormat.convertToIdr(
+                                                                produkLength *
+                                                                    int.parse(produkDipilihSet
+                                                                        .elementAt(
+                                                                            index)
+                                                                        .hargaJual),
+                                                                0),
+                                                        style: TextStyle(
+                                                          fontSize: 12.0,
+                                                          color: Colors
+                                                              .blue.shade800,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        trailing: InkWell(
+                                          onTap: () {
+                                            // _key.currentState.removeItem
+                                            setState(() {
+                                              total -= double.parse(
+                                                  produkDipilihSet
+                                                      .elementAt(index)
+                                                      .hargaJual);
+                                              List<ProdukData> produkLength =
                                                   produkDipilih
                                                       .where((element) =>
                                                           element.produkId ==
@@ -1225,100 +1255,450 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                                   .elementAt(
                                                                       index)
                                                                   .rowUniqueId)
-                                                      .toList()
-                                                      .length;
+                                                      .toList();
+                                              if (produkLength.length == 1) {
+                                                print("MASUK == 1");
+                                                if (_diskonNominal[produkDipilih
+                                                        .elementAt(index)
+                                                        .rowUniqueId] !=
+                                                    null) {
+                                                  _totalDiskon -=
+                                                      _diskonNominal[
+                                                          produkDipilih
+                                                              .elementAt(index)
+                                                              .rowUniqueId];
+                                                } else {
+                                                  _totalDiskon -= 0;
+                                                }
+                                                _diskonNominal[produkDipilihSet
+                                                    .elementAt(index)
+                                                    .rowUniqueId] = 0;
+                                                _diskonPersen[produkDipilihSet
+                                                    .elementAt(index)
+                                                    .rowUniqueId] = 0;
+                                                int produkLengthNew = produkDipilih
+                                                    .where((element) =>
+                                                        element.produkId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .produkId &&
+                                                        element.rowUniqueId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .rowUniqueId)
+                                                    .toList()
+                                                    .length;
 
-                                              _subTotalPerItem[produkDipilihSet
-                                                      .elementAt(index)
-                                                      .rowUniqueId] =
-                                                  produkLengthNew *
-                                                      int.parse(produkDipilihSet
-                                                          .elementAt(index)
-                                                          .hargaJual);
+                                                _subTotalPerItem[
+                                                        produkDipilihSet
+                                                            .elementAt(index)
+                                                            .rowUniqueId] =
+                                                    produkLengthNew *
+                                                        int.parse(
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .hargaJual);
 
-                                              _subTotalPerItem[produkDipilihSet
-                                                      .elementAt(index)
-                                                      .rowUniqueId] -=
-                                                  int.parse(produkDipilihSet
-                                                      .elementAt(index)
-                                                      .hargaJual);
+                                                _subTotalPerItem[
+                                                        produkDipilihSet
+                                                            .elementAt(index)
+                                                            .rowUniqueId] -=
+                                                    int.parse(produkDipilihSet
+                                                        .elementAt(index)
+                                                        .hargaJual);
 
-                                              produkDipilih.removeWhere(
-                                                  (element) =>
-                                                      element.produkId ==
-                                                          produkDipilihSet
-                                                              .elementAt(index)
-                                                              .produkId &&
-                                                      element.rowUniqueId ==
-                                                          produkDipilihSet
-                                                              .elementAt(index)
-                                                              .rowUniqueId);
-                                              produkDipilihSet.removeWhere(
-                                                  (element) =>
-                                                      element.produkId ==
-                                                          produkDipilihSet
-                                                              .elementAt(index)
-                                                              .produkId &&
-                                                      element.rowUniqueId ==
-                                                          produkDipilihSet
-                                                              .elementAt(index)
-                                                              .rowUniqueId);
-                                            } else {
-                                              print("MASUK > 1");
-                                              _subTotalPerItem[produkDipilihSet
-                                                      .elementAt(index)
-                                                      .rowUniqueId] -=
-                                                  int.parse(produkDipilihSet
-                                                      .elementAt(index)
-                                                      .hargaJual);
-                                              produkDipilih.removeWhere(
-                                                  (element) =>
-                                                      element.produkId ==
-                                                          produkDipilihSet
-                                                              .elementAt(index)
-                                                              .produkId &&
-                                                      element.rowUniqueId ==
-                                                          produkDipilihSet
-                                                              .elementAt(index)
-                                                              .rowUniqueId);
-                                              for (var i = produkLength.length;
-                                                  i > 1;
-                                                  i--) {
-                                                produkDipilih.add(
-                                                    produkDipilihSet
-                                                        .elementAt(index));
+                                                produkDipilih.removeWhere(
+                                                    (element) =>
+                                                        element.produkId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .produkId &&
+                                                        element.rowUniqueId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .rowUniqueId);
+                                                _key.currentState.removeItem(
+                                                  index,
+                                                  (_, animation) {
+                                                    return SizeTransition(
+                                                      axis: Axis.vertical,
+                                                      sizeFactor: animation,
+                                                      child: Container(
+                                                        height: 30,
+                                                        margin:
+                                                            EdgeInsets.all(2.0),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.white,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(
+                                                                      4.0),
+                                                          border: Border.all(
+                                                            color: Colors
+                                                                .blue[200],
+                                                            width: .5,
+                                                          ),
+                                                        ),
+                                                        child: Center(
+                                                          child: Text(
+                                                            "Produk dihapus dari keranjang",
+                                                            style: TextStyle(
+                                                              fontSize: 14.0,
+                                                              color: Colors
+                                                                  .blue[800],
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  duration: const Duration(
+                                                      milliseconds: 500),
+                                                );
+                                                produkDipilihSet.removeWhere(
+                                                    (element) =>
+                                                        element.produkId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .produkId &&
+                                                        element.rowUniqueId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .rowUniqueId);
+                                              } else {
+                                                print("MASUK > 1");
+                                                _subTotalPerItem[
+                                                        produkDipilihSet
+                                                            .elementAt(index)
+                                                            .rowUniqueId] -=
+                                                    int.parse(produkDipilihSet
+                                                        .elementAt(index)
+                                                        .hargaJual);
+                                                produkDipilih.removeWhere(
+                                                    (element) =>
+                                                        element.produkId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .produkId &&
+                                                        element.rowUniqueId ==
+                                                            produkDipilihSet
+                                                                .elementAt(
+                                                                    index)
+                                                                .rowUniqueId);
+                                                for (var i =
+                                                        produkLength.length;
+                                                    i > 1;
+                                                    i--) {
+                                                  produkDipilih.add(
+                                                      produkDipilihSet
+                                                          .elementAt(index));
+                                                }
                                               }
-                                            }
-                                          });
-                                          if (produkDipilih.isEmpty) {
-                                            c.setReload(false);
-                                            c.setResetProduk(true);
-                                            setState(() {
-                                              isPause = false;
                                             });
-                                            _controller.restart();
-                                          }
-                                        },
-                                        child: Container(
-                                          height: 20,
-                                          width: 20,
-                                          decoration: BoxDecoration(
-                                            color: Colors.red[400],
-                                            borderRadius:
-                                                BorderRadius.circular(4.0),
-                                          ),
-                                          child: Icon(
-                                            Icons.remove,
-                                            color: Colors.white,
-                                            size: 12,
+                                            if (produkDipilih.isEmpty) {
+                                              c.setReload(false);
+                                              c.setResetProduk(true);
+                                              setState(() {
+                                                isPause = false;
+                                              });
+                                              _controller.restart();
+                                            }
+                                          },
+                                          child: Container(
+                                            height: 20,
+                                            width: 20,
+                                            decoration: BoxDecoration(
+                                              color: Colors.red[400],
+                                              borderRadius:
+                                                  BorderRadius.circular(4.0),
+                                            ),
+                                            child: Icon(
+                                              Icons.remove,
+                                              color: Colors.white,
+                                              size: 12,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ));
-                              },
+                                    ),
+                                  );
+                                },
+                              ),
+                              //     ListView.builder(
+                              //   itemCount: produkDipilihSet.length,
+                              //   itemBuilder: (context, index) {
+                              //     int produkLength = produkDipilih
+                              //         .where((element) =>
+                              //             element.produkId ==
+                              //                 produkDipilihSet
+                              //                     .elementAt(index)
+                              //                     .produkId &&
+                              //             element.rowUniqueId ==
+                              //                 produkDipilihSet
+                              //                     .elementAt(index)
+                              //                     .rowUniqueId)
+                              //         .toList()
+                              //         .length;
+                              //     return AnimatedContainer(
+                              //       duration: Duration(milliseconds: 100),
+                              //       curve: Curves.easeInOut,
+                              //       margin: EdgeInsets.only(bottom: 4.0),
+                              //       decoration: BoxDecoration(
+                              //         color: Colors.white,
+                              //         borderRadius: BorderRadius.circular(4.0),
+                              //         border: Border.all(
+                              //           color: Colors.grey[300],
+                              //           width: 1.0,
+                              //         ),
+                              //       ),
+                              //       child: ListTile(
+                              //         dense: true,
+                              //         isThreeLine: false,
+                              //         title: Text(
+                              //           produkDipilihSet
+                              //               .elementAt(index)
+                              //               .produk,
+                              //           style: TextStyle(
+                              //             fontSize: 14.0,
+                              //             color: Colors.blue.shade800,
+                              //             fontWeight: FontWeight.bold,
+                              //           ),
+                              //         ),
+                              //         subtitle: Column(
+                              //           children: [
+                              //             Row(
+                              //               children: [
+                              //                 Text(
+                              //                   "$produkLength",
+                              //                   style: TextStyle(
+                              //                     fontSize: 12.0,
+                              //                     color: Colors.pink,
+                              //                     fontWeight: FontWeight.w600,
+                              //                   ),
+                              //                 ),
+                              //                 Text(
+                              //                   " x " +
+                              //                       CurrencyFormat.convertToIdr(
+                              //                           int.parse(
+                              //                               produkDipilihSet
+                              //                                   .elementAt(
+                              //                                       index)
+                              //                                   .hargaJual),
+                              //                           0),
+                              //                   style: TextStyle(
+                              //                     fontSize: 12.0,
+                              //                     color: Colors.grey[600],
+                              //                     fontWeight: FontWeight.w600,
+                              //                   ),
+                              //                 ),
+                              //                 // total
+                              //                 produkDipilihSet
+                              //                         .elementAt(index)
+                              //                         .hargaJual
+                              //                         .isEmpty
+                              //                     ? Container()
+                              //                     : Text(
+                              //                         " = " +
+                              //                             // CurrencyFormat.convertToIdr(
+                              //                             //     (int.parse(produkDipilihSet
+                              //                             //                 .elementAt(
+                              //                             //                     index)
+                              //                             //                 .hargaJual) -
+                              //                             //             _diskonNominal[
+                              //                             //                 produkDipilihSet
+                              //                             //                     .elementAt(
+                              //                             //                         index)
+                              //                             //                     .rowUniqueId]) *
+                              //                             //         produkLength,
+                              //                             //     0),
+
+                              //                             CurrencyFormat.convertToIdr(
+                              //                                 produkLength *
+                              //                                     int.parse(produkDipilihSet
+                              //                                         .elementAt(
+                              //                                             index)
+                              //                                         .hargaJual),
+                              //                                 0),
+                              //                         style: TextStyle(
+                              //                           fontSize: 12.0,
+                              //                           color: Colors
+                              //                               .blue.shade800,
+                              //                           fontWeight:
+                              //                               FontWeight.w600,
+                              //                         ),
+                              //                       )
+                              //               ],
+                              //             ),
+                              //           ],
+                              //         ),
+                              //         trailing: InkWell(
+                              //           onTap: () {
+                              //             setState(() {
+                              //               total -= double.parse(
+                              //                   produkDipilihSet
+                              //                       .elementAt(index)
+                              //                       .hargaJual);
+                              //               List<ProdukData> produkLength =
+                              //                   produkDipilih
+                              //                       .where((element) =>
+                              //                           element.produkId ==
+                              //                               produkDipilihSet
+                              //                                   .elementAt(
+                              //                                       index)
+                              //                                   .produkId &&
+                              //                           element.rowUniqueId ==
+                              //                               produkDipilihSet
+                              //                                   .elementAt(
+                              //                                       index)
+                              //                                   .rowUniqueId)
+                              //                       .toList();
+                              //               if (produkLength.length == 1) {
+                              //                 print("MASUK == 1");
+                              //                 if (_diskonNominal[produkDipilih
+                              //                         .elementAt(index)
+                              //                         .rowUniqueId] !=
+                              //                     null) {
+                              //                   _totalDiskon -= _diskonNominal[
+                              //                       produkDipilih
+                              //                           .elementAt(index)
+                              //                           .rowUniqueId];
+                              //                 } else {
+                              //                   _totalDiskon -= 0;
+                              //                 }
+                              //                 _diskonNominal[produkDipilihSet
+                              //                     .elementAt(index)
+                              //                     .rowUniqueId] = 0;
+                              //                 _diskonPersen[produkDipilihSet
+                              //                     .elementAt(index)
+                              //                     .rowUniqueId] = 0;
+                              //                 // _controllers[produkDipilihSet
+                              //                 //         .elementAt(index)
+                              //                 //         .rowUniqueId]
+                              //                 //     .value = TextEditingValue(
+                              //                 //   text: "",
+                              //                 // );
+
+                              //                 int produkLengthNew =
+                              //                     produkDipilih
+                              //                         .where((element) =>
+                              //                             element.produkId ==
+                              //                                 produkDipilihSet
+                              //                                     .elementAt(
+                              //                                         index)
+                              //                                     .produkId &&
+                              //                             element.rowUniqueId ==
+                              //                                 produkDipilihSet
+                              //                                     .elementAt(
+                              //                                         index)
+                              //                                     .rowUniqueId)
+                              //                         .toList()
+                              //                         .length;
+
+                              //                 _subTotalPerItem[produkDipilihSet
+                              //                         .elementAt(index)
+                              //                         .rowUniqueId] =
+                              //                     produkLengthNew *
+                              //                         int.parse(produkDipilihSet
+                              //                             .elementAt(index)
+                              //                             .hargaJual);
+
+                              //                 _subTotalPerItem[produkDipilihSet
+                              //                         .elementAt(index)
+                              //                         .rowUniqueId] -=
+                              //                     int.parse(produkDipilihSet
+                              //                         .elementAt(index)
+                              //                         .hargaJual);
+
+                              //                 produkDipilih.removeWhere(
+                              //                     (element) =>
+                              //                         element.produkId ==
+                              //                             produkDipilihSet
+                              //                                 .elementAt(index)
+                              //                                 .produkId &&
+                              //                         element.rowUniqueId ==
+                              //                             produkDipilihSet
+                              //                                 .elementAt(index)
+                              //                                 .rowUniqueId);
+                              //                 produkDipilihSet.removeWhere(
+                              //                     (element) =>
+                              //                         element.produkId ==
+                              //                             produkDipilihSet
+                              //                                 .elementAt(index)
+                              //                                 .produkId &&
+                              //                         element.rowUniqueId ==
+                              //                             produkDipilihSet
+                              //                                 .elementAt(index)
+                              //                                 .rowUniqueId);
+                              //               } else {
+                              //                 print("MASUK > 1");
+                              //                 _subTotalPerItem[produkDipilihSet
+                              //                         .elementAt(index)
+                              //                         .rowUniqueId] -=
+                              //                     int.parse(produkDipilihSet
+                              //                         .elementAt(index)
+                              //                         .hargaJual);
+                              //                 produkDipilih.removeWhere(
+                              //                     (element) =>
+                              //                         element.produkId ==
+                              //                             produkDipilihSet
+                              //                                 .elementAt(index)
+                              //                                 .produkId &&
+                              //                         element.rowUniqueId ==
+                              //                             produkDipilihSet
+                              //                                 .elementAt(index)
+                              //                                 .rowUniqueId);
+                              //                 for (var i = produkLength.length;
+                              //                     i > 1;
+                              //                     i--) {
+                              //                   produkDipilih.add(
+                              //                       produkDipilihSet
+                              //                           .elementAt(index));
+                              //                 }
+                              //               }
+                              //             });
+                              //             if (produkDipilih.isEmpty) {
+                              //               c.setReload(false);
+                              //               c.setResetProduk(true);
+                              //               setState(() {
+                              //                 isPause = false;
+                              //               });
+                              //               _controller.restart();
+                              //             }
+                              //           },
+                              //           child: Container(
+                              //             height: 20,
+                              //             width: 20,
+                              //             decoration: BoxDecoration(
+                              //               color: Colors.red[400],
+                              //               borderRadius:
+                              //                   BorderRadius.circular(4.0),
+                              //             ),
+                              //             child: Icon(
+                              //               Icons.remove,
+                              //               color: Colors.white,
+                              //               size: 12,
+                              //             ),
+                              //           ),
+                              //         ),
+                              //       ),
+                              //     );
+                              //   },
+                              // ),
                             ),
-                          ),
-                        ),
+                    ),
+                  ),
                   Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: 8.0,
@@ -1507,7 +1887,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                     child: Row(
                       mainAxisAlignment: produkDipilih.isNotEmpty
                           ? MainAxisAlignment.spaceBetween
-                          : MainAxisAlignment.end,
+                          : MainAxisAlignment.start,
                       children: [
                         // if (produkDipilih.isNotEmpty)
                         //   Text(
@@ -1517,20 +1897,25 @@ class _PenjualanPageState extends State<PenjualanPage>
                         //   ),
                         Text(
                           CurrencyFormat.convertToIdr(
-                              _subTotalPerItem
-                                  .map((key, value) {
-                                    return MapEntry(key, value);
-                                  })
-                                  .values
-                                  .fold(0, (previousValue, element) {
-                                    return previousValue + element;
-                                  }),
+                              // _subTotalPerItem
+                              //     .map((key, value) {
+                              //       return MapEntry(key, value);
+                              //     })
+                              //     .values
+                              //     .fold(0, (previousValue, element) {
+                              //       return previousValue + element;
+                              //     }),
+                              produkDipilih.map((e) {
+                                return int.parse(e.hargaJual);
+                              }).fold(0, (previousValue, element) {
+                                return previousValue + element;
+                              }),
                               0),
                           style: TextStyle(
                             fontSize: 16.0,
                             color: produkDipilih.isNotEmpty
                                 ? Colors.blue
-                                : Colors.green,
+                                : Colors.grey,
                           ),
                         ),
                         // Text(
@@ -1843,7 +2228,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                             style: ElevatedButton.styleFrom(
                               primary: salesmanSelected != "Pilih Salesman" &&
                                       pelangganSelected != "Pilih Customer" &&
-                                      total > 0
+                                      produkDipilih.isNotEmpty
                                   ? Colors.indigo[400]
                                   : Colors.grey[400],
                               onPrimary: Colors.white,
@@ -1854,7 +2239,7 @@ class _PenjualanPageState extends State<PenjualanPage>
                             ),
                             onPressed: salesmanSelected != "Pilih Salesman" &&
                                     pelangganSelected != "Pilih Customer" &&
-                                    total > 0
+                                    produkDipilih.isNotEmpty
                                 ? () {
                                     futureCheckStock().then((val) async {
                                       if (val.success) {

@@ -1095,7 +1095,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               )
             : null,
-        actions: c.activePage == "penjualan"
+        actions: c.activePage.toString() == "penjualan"
             ? <Widget>[
                 //Search Input
                 Container(
@@ -1528,7 +1528,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   isBySearch = false;
                 });
               },
-              selected: c.activePage == "penjualan",
+              selected: c.activePage.toString() == "penjualan",
             ),
             _drawerItem(
               icon: Icons.note_alt,
@@ -1547,7 +1547,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   isBySearch = false;
                 });
               },
-              selected: c.activePage == "transaksi",
+              selected: c.activePage.toString() == "transaksi",
             ),
           ],
         ),
