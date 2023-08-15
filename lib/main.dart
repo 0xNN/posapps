@@ -257,6 +257,11 @@ class _MyHomePageState extends State<MyHomePage> {
       print(response.body);
       return ProdukRes.fromMap(jsonDecode(response.body));
     } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Gagal memuat data produk"),
+        ),
+      );
       throw Exception('Failed to load Produk');
     }
   }

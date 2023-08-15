@@ -1,2 +1,2 @@
-const API_URL = "https://medeq.my.id/dev/api/";
+const API_URL = "https://medeq.my.id/api/";
 const MODE = "api";
