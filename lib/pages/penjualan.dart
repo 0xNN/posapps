@@ -1454,7 +1454,13 @@ class _PenjualanPageState extends State<PenjualanPage>
                                                 return item.nama;
                                               }).toList(),
                                         onChange: (String selected) {
+                                          setState(() {
+                                            pelangganSelected = selected;
+                                          });
+                                          print(pelangganSelected);
+                                          print(selected);
                                           String salesmanId = "";
+                                          bool isSalesmanSet = false;
                                           for (var element in pelangganData) {
                                             if (element.nama ==
                                                 pelangganSelected) {
@@ -1468,11 +1474,18 @@ class _PenjualanPageState extends State<PenjualanPage>
                                               setState(() {
                                                 salesmanSelected = element.nama;
                                               });
+                                              isSalesmanSet = true;
                                             }
                                           }
-                                          setState(() {
-                                            pelangganSelected = selected;
-                                          });
+                                          if (!isSalesmanSet) {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                    "Salesman tidak ditemukan"),
+                                              ),
+                                            );
+                                          }
                                         },
                                         constraints: BoxConstraints(
                                             maxHeight: 400, maxWidth: 400),

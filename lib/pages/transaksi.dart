@@ -1187,6 +1187,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                                   print(c.invoiceId);
                                                   c.setActivePage("penjualan");
                                                   c.setReload(false);
+                                                  c.setResetProduk(false);
                                                   widget.refresh();
                                                 },
                                                 style: ElevatedButton.styleFrom(
